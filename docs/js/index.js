@@ -48042,6 +48042,1303 @@ ${e2}`);
     legacy: false
   };
 
+  // node_modules/pixi.js/lib/scene/text/Text.mjs
+  init_TextureSource();
+  init_TextureStyle();
+
+  // node_modules/pixi.js/lib/scene/text/AbstractText.mjs
+  init_ObservablePoint();
+  init_deprecation();
+  init_ViewContainer();
+  var AbstractText = class extends ViewContainer {
+    constructor(options, styleClass) {
+      const { text, resolution, style, anchor, width, height, roundPixels, ...rest } = options;
+      super({
+        ...rest
+      });
+      this.batched = true;
+      this._resolution = null;
+      this._autoResolution = true;
+      this._didTextUpdate = true;
+      this._styleClass = styleClass;
+      this.text = text ?? "";
+      this.style = style;
+      this.resolution = resolution ?? null;
+      this.allowChildren = false;
+      this._anchor = new ObservablePoint(
+        {
+          _onUpdate: () => {
+            this.onViewUpdate();
+          }
+        }
+      );
+      if (anchor) this.anchor = anchor;
+      this.roundPixels = roundPixels ?? false;
+      if (width !== void 0) this.width = width;
+      if (height !== void 0) this.height = height;
+    }
+    /**
+     * The anchor point of the text that controls the origin point for positioning and rotation.
+     * Can be a number (same value for x/y) or a PointData object.
+     * - (0,0) is top-left
+     * - (0.5,0.5) is center
+     * - (1,1) is bottom-right
+     * ```ts
+     * // Set anchor to center
+     * const text = new Text({
+     *     text: 'Hello Pixi!',
+     *     anchor: 0.5 // Same as { x: 0.5, y: 0.5 }
+     * });
+     * // Set anchor to top-left
+     * const text2 = new Text({
+     *     text: 'Hello Pixi!',
+     *     anchor: { x: 0, y: 0 } // Top-left corner
+     * });
+     * // Set anchor to bottom-right
+     * const text3 = new Text({
+     *     text: 'Hello Pixi!',
+     *     anchor: { x: 1, y: 1 } // Bottom-right corner
+     * });
+     * ```
+     * @default { x: 0, y: 0 }
+     */
+    get anchor() {
+      return this._anchor;
+    }
+    set anchor(value) {
+      typeof value === "number" ? this._anchor.set(value) : this._anchor.copyFrom(value);
+    }
+    /**
+     * The text content to display. Use '\n' for line breaks.
+     * Accepts strings, numbers, or objects with toString() method.
+     * @example
+     * ```ts
+     * const text = new Text({
+     *     text: 'Hello Pixi!',
+     * });
+     * const multilineText = new Text({
+     *     text: 'Line 1\nLine 2\nLine 3',
+     * });
+     * const numberText = new Text({
+     *     text: 12345, // Will be converted to '12345'
+     * });
+     * const objectText = new Text({
+     *     text: { toString: () => 'Object Text' }, // Custom toString
+     * });
+     *
+     * // Update text dynamically
+     * text.text = 'Updated Text'; // Re-renders with new text
+     * text.text = 67890; // Updates to '67890'
+     * text.text = { toString: () => 'Dynamic Text' }; // Uses custom toString method
+     * // Clear text
+     * text.text = ''; // Clears the text
+     * ```
+     * @default ''
+     */
+    set text(value) {
+      value = value.toString();
+      if (this._text === value) return;
+      this._text = value;
+      this.onViewUpdate();
+    }
+    get text() {
+      return this._text;
+    }
+    /**
+     * The resolution/device pixel ratio for rendering.
+     * Higher values result in sharper text at the cost of performance.
+     * Set to null for auto-resolution based on device.
+     * @example
+     * ```ts
+     * const text = new Text({
+     *     text: 'Hello Pixi!',
+     *     resolution: 2 // High DPI for sharper text
+     * });
+     * const autoResText = new Text({
+     *     text: 'Auto Resolution',
+     *     resolution: null // Use device's pixel ratio
+     * });
+     * ```
+     * @default null
+     */
+    set resolution(value) {
+      this._autoResolution = value === null;
+      this._resolution = value;
+      this.onViewUpdate();
+    }
+    get resolution() {
+      return this._resolution;
+    }
+    get style() {
+      return this._style;
+    }
+    /**
+     * The style configuration for the text.
+     * Can be a TextStyle instance or a configuration object.
+     * Supports canvas text styles, HTML text styles, and bitmap text styles.
+     * @example
+     * ```ts
+     * const text = new Text({
+     *     text: 'Styled Text',
+     *     style: {
+     *         fontSize: 24,
+     *         fill: 0xff1010, // Red color
+     *         fontFamily: 'Arial',
+     *         align: 'center', // Center alignment
+     *         stroke: { color: '#4a1850', width: 5 }, // Purple stroke
+     *         dropShadow: {
+     *             color: '#000000', // Black shadow
+     *             blur: 4, // Shadow blur
+     *             distance: 6 // Shadow distance
+     *         }
+     *     }
+     * });
+     * const htmlText = new HTMLText({
+     *     text: 'HTML Styled Text',
+     *     style: {
+     *         fontSize: '20px',
+     *         fill: 'blue',
+     *         fontFamily: 'Verdana',
+     *     }
+     * });
+     * const bitmapText = new BitmapText({
+     *     text: 'Bitmap Styled Text',
+     *     style: {
+     *         fontName: 'Arial',
+     *         fontSize: 32,
+     *     }
+     * })
+     *
+     * // Update style dynamically
+     * text.style = {
+     *     fontSize: 30, // Change font size
+     *     fill: 0x00ff00, // Change color to green
+     *     align: 'right', // Change alignment to right
+     *     stroke: { color: '#000000', width: 2 }, // Add black stroke
+     * }
+     */
+    set style(style) {
+      style || (style = {});
+      this._style?.off("update", this.onViewUpdate, this);
+      if (style instanceof this._styleClass) {
+        this._style = style;
+      } else {
+        this._style = new this._styleClass(style);
+      }
+      this._style.on("update", this.onViewUpdate, this);
+      this.onViewUpdate();
+    }
+    /**
+     * The width of the sprite, setting this will actually modify the scale to achieve the value set.
+     * @example
+     * ```ts
+     * // Set width directly
+     * texture.width = 200;
+     * console.log(texture.scale.x); // Scale adjusted to match width
+     *
+     * // For better performance when setting both width and height
+     * texture.setSize(300, 400); // Avoids recalculating bounds twice
+     * ```
+     */
+    get width() {
+      return Math.abs(this.scale.x) * this.bounds.width;
+    }
+    set width(value) {
+      this._setWidth(value, this.bounds.width);
+    }
+    /**
+     * The height of the sprite, setting this will actually modify the scale to achieve the value set.
+     * @example
+     * ```ts
+     * // Set height directly
+     * texture.height = 200;
+     * console.log(texture.scale.y); // Scale adjusted to match height
+     *
+     * // For better performance when setting both width and height
+     * texture.setSize(300, 400); // Avoids recalculating bounds twice
+     * ```
+     */
+    get height() {
+      return Math.abs(this.scale.y) * this.bounds.height;
+    }
+    set height(value) {
+      this._setHeight(value, this.bounds.height);
+    }
+    /**
+     * Retrieves the size of the Text as a [Size]{@link Size} object based on the texture dimensions and scale.
+     * This is faster than getting width and height separately as it only calculates the bounds once.
+     * @example
+     * ```ts
+     * // Basic size retrieval
+     * const text = new Text({
+     *     text: 'Hello Pixi!',
+     *     style: { fontSize: 24 }
+     * });
+     * const size = text.getSize();
+     * console.log(`Size: ${size.width}x${size.height}`);
+     *
+     * // Reuse existing size object
+     * const reuseSize = { width: 0, height: 0 };
+     * text.getSize(reuseSize);
+     * ```
+     * @param out - Optional object to store the size in, to avoid allocating a new object
+     * @returns The size of the Sprite
+     * @see {@link Text#width} For getting just the width
+     * @see {@link Text#height} For getting just the height
+     * @see {@link Text#setSize} For setting both width and height
+     */
+    getSize(out2) {
+      out2 || (out2 = {});
+      out2.width = Math.abs(this.scale.x) * this.bounds.width;
+      out2.height = Math.abs(this.scale.y) * this.bounds.height;
+      return out2;
+    }
+    /**
+     * Sets the size of the Text to the specified width and height.
+     * This is faster than setting width and height separately as it only recalculates bounds once.
+     * @example
+     * ```ts
+     * // Basic size setting
+     * const text = new Text({
+     *    text: 'Hello Pixi!',
+     *    style: { fontSize: 24 }
+     * });
+     * text.setSize(100, 200); // Width: 100, Height: 200
+     *
+     * // Set uniform size
+     * text.setSize(100); // Sets both width and height to 100
+     *
+     * // Set size with object
+     * text.setSize({
+     *     width: 200,
+     *     height: 300
+     * });
+     * ```
+     * @param value - This can be either a number or a {@link Size} object
+     * @param height - The height to set. Defaults to the value of `width` if not provided
+     * @see {@link Text#width} For setting width only
+     * @see {@link Text#height} For setting height only
+     */
+    setSize(value, height) {
+      if (typeof value === "object") {
+        height = value.height ?? value.width;
+        value = value.width;
+      } else {
+        height ?? (height = value);
+      }
+      value !== void 0 && this._setWidth(value, this.bounds.width);
+      height !== void 0 && this._setHeight(height, this.bounds.height);
+    }
+    /**
+     * Checks if the object contains the given point in local coordinates.
+     * Uses the text's bounds for hit testing.
+     * @example
+     * ```ts
+     * // Basic point check
+     * const localPoint = { x: 50, y: 25 };
+     * const contains = text.containsPoint(localPoint);
+     * console.log('Point is inside:', contains);
+     * ```
+     * @param point - The point to check in local coordinates
+     * @returns True if the point is within the text's bounds
+     * @see {@link Container#toLocal} For converting global coordinates to local
+     */
+    containsPoint(point) {
+      const width = this.bounds.width;
+      const height = this.bounds.height;
+      const x1 = -width * this.anchor.x;
+      let y1 = 0;
+      if (point.x >= x1 && point.x <= x1 + width) {
+        y1 = -height * this.anchor.y;
+        if (point.y >= y1 && point.y <= y1 + height) return true;
+      }
+      return false;
+    }
+    /** @internal */
+    onViewUpdate() {
+      if (!this.didViewUpdate) this._didTextUpdate = true;
+      super.onViewUpdate();
+    }
+    /**
+     * Destroys this text renderable and optionally its style texture.
+     * @param options - Options parameter. A boolean will act as if all options
+     *  have been set to that value
+     * @example
+     * // Destroys the text and its style
+     * text.destroy({ style: true, texture: true, textureSource: true });
+     * text.destroy(true);
+     * text.destroy() // Destroys the text, but not its style
+     */
+    destroy(options = false) {
+      super.destroy(options);
+      this.owner = null;
+      this._bounds = null;
+      this._anchor = null;
+      if (typeof options === "boolean" ? options : options?.style) {
+        this._style.destroy(options);
+      }
+      this._style = null;
+      this._text = null;
+    }
+    /**
+     * Returns a unique key for this instance.
+     * This key is used for caching.
+     * @returns {string} Unique key for the instance
+     */
+    get styleKey() {
+      return `${this._text}:${this._style.styleKey}:${this._resolution}`;
+    }
+  };
+  function ensureTextOptions(args, name) {
+    let options = args[0] ?? {};
+    if (typeof options === "string" || args[1]) {
+      deprecation(v8_0_0, `use new ${name}({ text: "hi!", style }) instead`);
+      options = {
+        text: options,
+        style: args[1]
+      };
+    }
+    return options;
+  }
+
+  // node_modules/pixi.js/lib/scene/text/canvas/CanvasTextGenerator.mjs
+  init_Color();
+  init_Rectangle();
+  init_CanvasPool();
+
+  // node_modules/pixi.js/lib/utils/canvas/getCanvasBoundingBox.mjs
+  init_adapter();
+  init_pow2();
+  init_Rectangle();
+  var _internalCanvas = null;
+  var _internalContext = null;
+  function ensureInternalCanvas(width, height) {
+    if (!_internalCanvas) {
+      _internalCanvas = DOMAdapter.get().createCanvas(256, 128);
+      _internalContext = _internalCanvas.getContext("2d", { willReadFrequently: true });
+      _internalContext.globalCompositeOperation = "copy";
+      _internalContext.globalAlpha = 1;
+    }
+    if (_internalCanvas.width < width || _internalCanvas.height < height) {
+      _internalCanvas.width = nextPow2(width);
+      _internalCanvas.height = nextPow2(height);
+    }
+  }
+  function checkRow(data, width, y2) {
+    for (let x2 = 0, index = 4 * y2 * width; x2 < width; ++x2, index += 4) {
+      if (data[index + 3] !== 0) return false;
+    }
+    return true;
+  }
+  function checkColumn(data, width, x2, top, bottom) {
+    const stride = 4 * width;
+    for (let y2 = top, index = top * stride + 4 * x2; y2 <= bottom; ++y2, index += stride) {
+      if (data[index + 3] !== 0) return false;
+    }
+    return true;
+  }
+  function getCanvasBoundingBox(...args) {
+    let options = args[0];
+    if (!options.canvas) {
+      options = { canvas: args[0], resolution: args[1] };
+    }
+    const { canvas } = options;
+    const resolution = Math.min(options.resolution ?? 1, 1);
+    const width = options.width ?? canvas.width;
+    const height = options.height ?? canvas.height;
+    let output = options.output;
+    ensureInternalCanvas(width, height);
+    if (!_internalContext) {
+      throw new TypeError("Failed to get canvas 2D context");
+    }
+    _internalContext.drawImage(
+      canvas,
+      0,
+      0,
+      width,
+      height,
+      0,
+      0,
+      width * resolution,
+      height * resolution
+    );
+    const imageData = _internalContext.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    let left = 0;
+    let top = 0;
+    let right = width - 1;
+    let bottom = height - 1;
+    while (top < height && checkRow(data, width, top)) ++top;
+    if (top === height) return Rectangle.EMPTY;
+    while (checkRow(data, width, bottom)) --bottom;
+    while (checkColumn(data, width, left, top, bottom)) ++left;
+    while (checkColumn(data, width, right, top, bottom)) --right;
+    ++right;
+    ++bottom;
+    _internalContext.globalCompositeOperation = "source-over";
+    _internalContext.strokeRect(left, top, right - left, bottom - top);
+    _internalContext.globalCompositeOperation = "copy";
+    output ?? (output = new Rectangle());
+    output.set(left / resolution, top / resolution, (right - left) / resolution, (bottom - top) / resolution);
+    return output;
+  }
+
+  // node_modules/pixi.js/lib/scene/text/canvas/CanvasTextGenerator.mjs
+  init_CanvasTextMetrics();
+  init_fontStringFromTextStyle();
+  init_getCanvasFillStyle();
+  var tempRect6 = new Rectangle();
+  function countSpaces(text) {
+    let count2 = 0;
+    for (let i2 = 0; i2 < text.length; i2++) {
+      if (text.charCodeAt(i2) === 32) count2++;
+    }
+    return count2;
+  }
+  var CanvasTextGeneratorClass = class {
+    /**
+     * Creates a canvas with the specified text rendered to it.
+     *
+     * Generates a canvas of appropriate size, renders the text with the provided style,
+     * and returns both the canvas/context and a Rectangle representing the text bounds.
+     *
+     * When trim is enabled in the style, the frame will represent the bounds of the
+     * non-transparent pixels, which can be smaller than the full canvas.
+     * @param options - The options for generating the text canvas
+     * @param options.text - The text to render
+     * @param options.style - The style to apply to the text
+     * @param options.resolution - The resolution of the canvas (defaults to 1)
+     * @param options.padding
+     * @returns An object containing the canvas/context and the frame (bounds) of the text
+     */
+    getCanvasAndContext(options) {
+      const { text, style, resolution = 1 } = options;
+      const padding = style._getFinalPadding();
+      const measured = CanvasTextMetrics.measureText(text || " ", style);
+      const width = Math.ceil(Math.ceil(Math.max(1, measured.width) + padding * 2) * resolution);
+      const height = Math.ceil(Math.ceil(Math.max(1, measured.height) + padding * 2) * resolution);
+      const canvasAndContext = CanvasPool.getOptimalCanvasAndContext(width, height);
+      this._renderTextToCanvas(style, padding, resolution, canvasAndContext, measured);
+      const frame = style.trim ? getCanvasBoundingBox({ canvas: canvasAndContext.canvas, width, height, resolution: 1, output: tempRect6 }) : tempRect6.set(0, 0, width, height);
+      return {
+        canvasAndContext,
+        frame
+      };
+    }
+    /**
+     * Returns a canvas and context to the pool.
+     *
+     * This should be called when you're done with the canvas to allow reuse
+     * and prevent memory leaks.
+     * @param canvasAndContext - The canvas and context to return to the pool
+     */
+    returnCanvasAndContext(canvasAndContext) {
+      CanvasPool.returnCanvasAndContext(canvasAndContext);
+    }
+    /**
+     * Renders text to its canvas, and updates its texture.
+     * @param style - The style of the text
+     * @param padding - The padding of the text
+     * @param resolution - The resolution of the text
+     * @param canvasAndContext - The canvas and context to render the text to
+     * @param measured - Pre-measured text metrics to avoid duplicate measurement
+     */
+    _renderTextToCanvas(style, padding, resolution, canvasAndContext, measured) {
+      if (measured.runsByLine && measured.runsByLine.length > 0) {
+        this._renderTaggedTextToCanvas(measured, style, padding, resolution, canvasAndContext);
+        return;
+      }
+      const { canvas, context: context2 } = canvasAndContext;
+      const font = fontStringFromTextStyle(style);
+      const lines = measured.lines;
+      const lineHeight = measured.lineHeight;
+      const lineWidths = measured.lineWidths;
+      const maxLineWidth = measured.maxLineWidth;
+      const fontProperties = measured.fontProperties;
+      const height = canvas.height;
+      context2.resetTransform();
+      context2.scale(resolution, resolution);
+      context2.textBaseline = style.textBaseline;
+      if (style._stroke?.width) {
+        const strokeStyle = style._stroke;
+        context2.lineWidth = strokeStyle.width;
+        context2.miterLimit = strokeStyle.miterLimit;
+        context2.lineJoin = strokeStyle.join;
+        context2.lineCap = strokeStyle.cap;
+      }
+      context2.font = font;
+      let linePositionX;
+      let linePositionY;
+      const passesCount = style.dropShadow ? 2 : 1;
+      const strokeWidth = style._stroke?.width ?? 0;
+      const halfStroke = strokeWidth / 2;
+      let linePositionYShift = (lineHeight - fontProperties.fontSize) / 2;
+      if (lineHeight - fontProperties.fontSize < 0) {
+        linePositionYShift = 0;
+      }
+      for (let i2 = 0; i2 < passesCount; ++i2) {
+        const isShadowPass = style.dropShadow && i2 === 0;
+        const dsOffsetText = isShadowPass ? Math.ceil(Math.max(1, height) + padding * 2) : 0;
+        const dsOffsetShadow = dsOffsetText * resolution;
+        if (isShadowPass) {
+          this._setupDropShadow(context2, style, resolution, dsOffsetShadow);
+        } else {
+          const gradientBounds = style._gradientBounds;
+          const gradientOffset = style._gradientOffset;
+          if (gradientBounds) {
+            const gradientMetrics = {
+              width: gradientBounds.width,
+              height: gradientBounds.height,
+              lineHeight: gradientBounds.height,
+              lines: measured.lines
+            };
+            this._setFillAndStrokeStyles(
+              context2,
+              style,
+              gradientMetrics,
+              padding,
+              halfStroke,
+              gradientOffset?.x ?? 0,
+              gradientOffset?.y ?? 0
+            );
+          } else if (gradientOffset) {
+            this._setFillAndStrokeStyles(
+              context2,
+              style,
+              measured,
+              padding,
+              halfStroke,
+              gradientOffset.x,
+              gradientOffset.y
+            );
+          } else {
+            this._setFillAndStrokeStyles(context2, style, measured, padding, halfStroke);
+          }
+          context2.shadowColor = "rgba(0,0,0,0)";
+        }
+        for (let j2 = 0; j2 < lines.length; j2++) {
+          linePositionX = halfStroke;
+          linePositionY = halfStroke + j2 * lineHeight + fontProperties.ascent + linePositionYShift;
+          linePositionX += this._getAlignmentOffset(lineWidths[j2], maxLineWidth, style.align);
+          let wordSpacing = 0;
+          if (style.align === "justify" && style.wordWrap && j2 < lines.length - 1) {
+            const spaces = countSpaces(lines[j2]);
+            if (spaces > 0) {
+              wordSpacing = (maxLineWidth - lineWidths[j2]) / spaces;
+            }
+          }
+          if (style._stroke?.width) {
+            this._drawLetterSpacing(
+              lines[j2],
+              style,
+              canvasAndContext,
+              linePositionX + padding,
+              linePositionY + padding - dsOffsetText,
+              true,
+              wordSpacing
+            );
+          }
+          if (style._fill !== void 0) {
+            this._drawLetterSpacing(
+              lines[j2],
+              style,
+              canvasAndContext,
+              linePositionX + padding,
+              linePositionY + padding - dsOffsetText,
+              false,
+              wordSpacing
+            );
+          }
+        }
+      }
+    }
+    /**
+     * Renders tagged text (with per-run styles) to canvas.
+     * @param measured - The measured text metrics containing runsByLine
+     * @param style - The base text style
+     * @param padding - The padding of the text
+     * @param resolution - The resolution of the text
+     * @param canvasAndContext - The canvas and context to render to
+     */
+    _renderTaggedTextToCanvas(measured, style, padding, resolution, canvasAndContext) {
+      const { canvas, context: context2 } = canvasAndContext;
+      const { runsByLine, lineWidths, maxLineWidth, lineAscents, lineHeights, hasDropShadow } = measured;
+      const height = canvas.height;
+      context2.resetTransform();
+      context2.scale(resolution, resolution);
+      context2.textBaseline = style.textBaseline;
+      const passesCount = hasDropShadow ? 2 : 1;
+      let maxStrokeWidth = style._stroke?.width ?? 0;
+      for (const lineRuns of runsByLine) {
+        for (const run of lineRuns) {
+          const w2 = run.style._stroke?.width ?? 0;
+          if (w2 > maxStrokeWidth) maxStrokeWidth = w2;
+        }
+      }
+      const halfStroke = maxStrokeWidth / 2;
+      const runDataByLine = [];
+      for (let lineIndex = 0; lineIndex < runsByLine.length; lineIndex++) {
+        const lineRuns = runsByLine[lineIndex];
+        const runData = [];
+        for (const run of lineRuns) {
+          const font = fontStringFromTextStyle(run.style);
+          context2.font = font;
+          runData.push({
+            width: CanvasTextMetrics._measureText(run.text, run.style.letterSpacing, context2),
+            font
+          });
+        }
+        runDataByLine.push(runData);
+      }
+      for (let pass = 0; pass < passesCount; ++pass) {
+        const isShadowPass = hasDropShadow && pass === 0;
+        const dsOffsetText = isShadowPass ? Math.ceil(Math.max(1, height) + padding * 2) : 0;
+        const dsOffsetShadow = dsOffsetText * resolution;
+        if (!isShadowPass) {
+          context2.shadowColor = "rgba(0,0,0,0)";
+        }
+        let currentY = halfStroke;
+        for (let lineIndex = 0; lineIndex < runsByLine.length; lineIndex++) {
+          const lineRuns = runsByLine[lineIndex];
+          const lineWidth = lineWidths[lineIndex];
+          const lineAscent = lineAscents[lineIndex];
+          const currentLineHeight = lineHeights[lineIndex];
+          const lineRunData = runDataByLine[lineIndex];
+          let linePositionX = halfStroke;
+          linePositionX += this._getAlignmentOffset(lineWidth, maxLineWidth, style.align);
+          let wordSpacing = 0;
+          if (style.align === "justify" && style.wordWrap && lineIndex < runsByLine.length - 1) {
+            let totalSpaces = 0;
+            for (const run of lineRuns) {
+              totalSpaces += countSpaces(run.text);
+            }
+            if (totalSpaces > 0) {
+              wordSpacing = (maxLineWidth - lineWidth) / totalSpaces;
+            }
+          }
+          const linePositionY = currentY + lineAscent;
+          let runX = linePositionX + padding;
+          for (let runIndex = 0; runIndex < lineRuns.length; runIndex++) {
+            const run = lineRuns[runIndex];
+            const { width: runWidth, font: runFont } = lineRunData[runIndex];
+            context2.font = runFont;
+            context2.textBaseline = run.style.textBaseline;
+            if (run.style._stroke?.width) {
+              const runStroke = run.style._stroke;
+              context2.lineWidth = runStroke.width;
+              context2.miterLimit = runStroke.miterLimit;
+              context2.lineJoin = runStroke.join;
+              context2.lineCap = runStroke.cap;
+              if (isShadowPass) {
+                if (run.style.dropShadow) {
+                  this._setupDropShadow(
+                    context2,
+                    run.style,
+                    resolution,
+                    dsOffsetShadow
+                  );
+                } else {
+                  const spacesSkipped = countSpaces(run.text);
+                  runX += runWidth + spacesSkipped * wordSpacing;
+                  continue;
+                }
+              } else {
+                const runFontProps = CanvasTextMetrics.measureFont(runFont);
+                const runHeight = run.style.lineHeight || runFontProps.fontSize;
+                const runMetrics = {
+                  width: runWidth,
+                  height: runHeight,
+                  lineHeight: runHeight,
+                  lines: [run.text]
+                };
+                context2.strokeStyle = getCanvasFillStyle(
+                  runStroke,
+                  context2,
+                  runMetrics,
+                  padding * 2,
+                  runX - padding,
+                  currentY
+                );
+              }
+              this._drawLetterSpacing(
+                run.text,
+                run.style,
+                canvasAndContext,
+                runX,
+                linePositionY + padding - dsOffsetText,
+                true,
+                wordSpacing
+              );
+            }
+            const spacesInRun = countSpaces(run.text);
+            runX += runWidth + spacesInRun * wordSpacing;
+          }
+          runX = linePositionX + padding;
+          for (let runIndex = 0; runIndex < lineRuns.length; runIndex++) {
+            const run = lineRuns[runIndex];
+            const { width: runWidth, font: runFont } = lineRunData[runIndex];
+            context2.font = runFont;
+            context2.textBaseline = run.style.textBaseline;
+            if (run.style._fill !== void 0) {
+              if (isShadowPass) {
+                if (run.style.dropShadow) {
+                  this._setupDropShadow(
+                    context2,
+                    run.style,
+                    resolution,
+                    dsOffsetShadow
+                  );
+                } else {
+                  const spacesSkipped = countSpaces(run.text);
+                  runX += runWidth + spacesSkipped * wordSpacing;
+                  continue;
+                }
+              } else {
+                const runFontProps = CanvasTextMetrics.measureFont(runFont);
+                const runHeight = run.style.lineHeight || runFontProps.fontSize;
+                const runMetrics = {
+                  width: runWidth,
+                  height: runHeight,
+                  lineHeight: runHeight,
+                  lines: [run.text]
+                };
+                context2.fillStyle = getCanvasFillStyle(
+                  run.style._fill,
+                  context2,
+                  runMetrics,
+                  padding * 2,
+                  runX - padding,
+                  currentY
+                );
+              }
+              this._drawLetterSpacing(
+                run.text,
+                run.style,
+                canvasAndContext,
+                runX,
+                linePositionY + padding - dsOffsetText,
+                false,
+                wordSpacing
+              );
+            }
+            const spacesInFillRun = countSpaces(run.text);
+            runX += runWidth + spacesInFillRun * wordSpacing;
+          }
+          currentY += currentLineHeight;
+        }
+      }
+    }
+    /**
+     * Sets fill and stroke styles on the canvas context for text rendering.
+     * @param context - The canvas context
+     * @param style - The text style
+     * @param metrics - The text metrics for gradient calculation
+     * @param padding - The padding value
+     * @param halfStroke - Half the stroke width
+     * @param offsetX - X offset for gradient positioning
+     * @param offsetY - Y offset for gradient positioning
+     */
+    _setFillAndStrokeStyles(context2, style, metrics, padding, halfStroke, offsetX = 0, offsetY = 0) {
+      context2.fillStyle = style._fill ? getCanvasFillStyle(style._fill, context2, metrics, padding * 2, offsetX, offsetY) : null;
+      if (style._stroke?.width) {
+        const strokePadding = halfStroke + padding * 2;
+        context2.strokeStyle = getCanvasFillStyle(
+          style._stroke,
+          context2,
+          metrics,
+          strokePadding,
+          offsetX,
+          offsetY
+        );
+      }
+    }
+    /**
+     * Sets up the canvas context for drop shadow rendering.
+     * @param context - The canvas context
+     * @param style - The text style containing drop shadow options
+     * @param resolution - The resolution multiplier
+     * @param dsOffsetShadow - The shadow Y offset
+     */
+    _setupDropShadow(context2, style, resolution, dsOffsetShadow) {
+      context2.fillStyle = "black";
+      context2.strokeStyle = "black";
+      const shadowOptions = style.dropShadow;
+      const dropShadowColor = shadowOptions.color;
+      const dropShadowAlpha = shadowOptions.alpha;
+      context2.shadowColor = Color.shared.setValue(dropShadowColor).setAlpha(dropShadowAlpha).toRgbaString();
+      const dropShadowBlur = shadowOptions.blur * resolution;
+      const dropShadowDistance = shadowOptions.distance * resolution;
+      context2.shadowBlur = dropShadowBlur;
+      context2.shadowOffsetX = Math.cos(shadowOptions.angle) * dropShadowDistance;
+      context2.shadowOffsetY = Math.sin(shadowOptions.angle) * dropShadowDistance + dsOffsetShadow;
+    }
+    /**
+     * Calculates the X offset for text alignment.
+     * @param lineWidth - The width of the current line
+     * @param alignWidth - The width to align against
+     * @param align - The text alignment
+     * @returns The X offset for this line
+     */
+    _getAlignmentOffset(lineWidth, alignWidth, align) {
+      if (align === "right") {
+        return alignWidth - lineWidth;
+      } else if (align === "center") {
+        return (alignWidth - lineWidth) / 2;
+      }
+      return 0;
+    }
+    /**
+     * Render the text with letter-spacing.
+     *
+     * This method handles rendering text with the correct letter spacing, using either:
+     * 1. Native letter spacing if supported by the browser
+     * 2. Manual letter spacing calculation if not natively supported
+     *
+     * For manual letter spacing, it calculates the position of each character
+     * based on its width and the desired spacing.
+     * @param text - The text to draw
+     * @param style - The text style to apply
+     * @param canvasAndContext - The canvas and context to draw to
+     * @param x - Horizontal position to draw the text
+     * @param y - Vertical position to draw the text
+     * @param isStroke - Whether to render the stroke (true) or fill (false)
+     * @param wordSpacing - Extra spacing to add between words (for justify alignment)
+     * @private
+     */
+    _drawLetterSpacing(text, style, canvasAndContext, x2, y2, isStroke = false, wordSpacing = 0) {
+      const { context: context2 } = canvasAndContext;
+      const letterSpacing = style.letterSpacing;
+      let useExperimentalLetterSpacing = false;
+      if (CanvasTextMetrics.experimentalLetterSpacingSupported) {
+        if (CanvasTextMetrics.experimentalLetterSpacing) {
+          context2.letterSpacing = `${letterSpacing}px`;
+          context2.textLetterSpacing = `${letterSpacing}px`;
+          useExperimentalLetterSpacing = true;
+        } else {
+          context2.letterSpacing = "0px";
+          context2.textLetterSpacing = "0px";
+        }
+      }
+      if ((letterSpacing === 0 || useExperimentalLetterSpacing) && wordSpacing === 0) {
+        if (isStroke) {
+          context2.strokeText(text, x2, y2);
+        } else {
+          context2.fillText(text, x2, y2);
+        }
+        return;
+      }
+      if (wordSpacing !== 0 && (letterSpacing === 0 || useExperimentalLetterSpacing)) {
+        const words = text.split(" ");
+        let currentPosition2 = x2;
+        const spaceWidth = context2.measureText(" ").width;
+        for (let i2 = 0; i2 < words.length; i2++) {
+          if (isStroke) {
+            context2.strokeText(words[i2], currentPosition2, y2);
+          } else {
+            context2.fillText(words[i2], currentPosition2, y2);
+          }
+          currentPosition2 += context2.measureText(words[i2]).width + spaceWidth + wordSpacing;
+        }
+        return;
+      }
+      let currentPosition = x2;
+      const stringArray = CanvasTextMetrics.graphemeSegmenter(text);
+      let previousWidth = context2.measureText(text).width;
+      let currentWidth = 0;
+      for (let i2 = 0; i2 < stringArray.length; ++i2) {
+        const currentChar = stringArray[i2];
+        if (isStroke) {
+          context2.strokeText(currentChar, currentPosition, y2);
+        } else {
+          context2.fillText(currentChar, currentPosition, y2);
+        }
+        let textStr = "";
+        for (let j2 = i2 + 1; j2 < stringArray.length; ++j2) {
+          textStr += stringArray[j2];
+        }
+        currentWidth = context2.measureText(textStr).width;
+        currentPosition += previousWidth - currentWidth + letterSpacing;
+        if (currentChar === " ") currentPosition += wordSpacing;
+        previousWidth = currentWidth;
+      }
+    }
+  };
+  var CanvasTextGenerator = new CanvasTextGeneratorClass();
+
+  // node_modules/pixi.js/lib/scene/text/Text.mjs
+  init_CanvasTextMetrics();
+  init_TextStyle();
+
+  // node_modules/pixi.js/lib/scene/text/init.mjs
+  init_Extensions();
+
+  // node_modules/pixi.js/lib/scene/text/canvas/CanvasTextPipe.mjs
+  init_Extensions();
+  init_GCManagedHash();
+
+  // node_modules/pixi.js/lib/scene/text/utils/updateTextBounds.mjs
+  init_updateQuadBounds();
+  function updateTextBounds(batchableSprite, text) {
+    const { texture, bounds } = batchableSprite;
+    const padding = text._style._getFinalPadding();
+    updateQuadBounds(bounds, text._anchor, texture);
+    const paddingOffset = text._anchor._x * padding * 2;
+    const paddingOffsetY = text._anchor._y * padding * 2;
+    bounds.minX -= padding - paddingOffset;
+    bounds.minY -= padding - paddingOffsetY;
+    bounds.maxX -= padding - paddingOffset;
+    bounds.maxY -= padding - paddingOffsetY;
+  }
+
+  // node_modules/pixi.js/lib/scene/text/canvas/BatchableText.mjs
+  init_BatchableSprite();
+  var BatchableText = class extends BatchableSprite {
+  };
+
+  // node_modules/pixi.js/lib/scene/text/canvas/CanvasTextPipe.mjs
+  var CanvasTextPipe = class {
+    constructor(renderer) {
+      this._renderer = renderer;
+      renderer.runners.resolutionChange.add(this);
+      this._managedTexts = new GCManagedHash({
+        renderer,
+        type: "renderable",
+        onUnload: this.onTextUnload.bind(this),
+        name: "canvasText"
+      });
+    }
+    resolutionChange() {
+      for (const key in this._managedTexts.items) {
+        const text = this._managedTexts.items[key];
+        if (text?._autoResolution) text.onViewUpdate();
+      }
+    }
+    validateRenderable(text) {
+      const gpuText = this._getGpuText(text);
+      const newKey = text.styleKey;
+      if (gpuText.currentKey !== newKey) return true;
+      return text._didTextUpdate;
+    }
+    addRenderable(text, instructionSet) {
+      const batchableText = this._getGpuText(text);
+      if (text._didTextUpdate) {
+        const resolution = text._autoResolution ? this._renderer.resolution : text.resolution;
+        if (batchableText.currentKey !== text.styleKey || text._resolution !== resolution) {
+          this._updateGpuText(text);
+        }
+        text._didTextUpdate = false;
+        updateTextBounds(batchableText, text);
+      }
+      this._renderer.renderPipes.batch.addToBatch(batchableText, instructionSet);
+    }
+    updateRenderable(text) {
+      const batchableText = this._getGpuText(text);
+      batchableText._batcher.updateElement(batchableText);
+    }
+    _updateGpuText(text) {
+      const batchableText = this._getGpuText(text);
+      if (batchableText.texture) {
+        this._renderer.canvasText.decreaseReferenceCount(batchableText.currentKey);
+      }
+      text._resolution = text._autoResolution ? this._renderer.resolution : text.resolution;
+      batchableText.texture = this._renderer.canvasText.getManagedTexture(text);
+      batchableText.currentKey = text.styleKey;
+    }
+    _getGpuText(text) {
+      return text._gpuData[this._renderer.uid] || this.initGpuText(text);
+    }
+    initGpuText(text) {
+      const batchableText = new BatchableText();
+      batchableText.currentKey = "--";
+      batchableText.renderable = text;
+      batchableText.transform = text.groupTransform;
+      batchableText.bounds = { minX: 0, maxX: 1, minY: 0, maxY: 0 };
+      batchableText.roundPixels = this._renderer._roundPixels | text._roundPixels;
+      text._gpuData[this._renderer.uid] = batchableText;
+      this._managedTexts.add(text);
+      return batchableText;
+    }
+    onTextUnload(text) {
+      const gpuData = text._gpuData[this._renderer.uid];
+      if (!gpuData) return;
+      const { canvasText } = this._renderer;
+      const refCount = canvasText.getReferenceCount(gpuData.currentKey);
+      if (refCount > 0) {
+        canvasText.decreaseReferenceCount(gpuData.currentKey);
+      } else if (gpuData.texture) {
+        canvasText.returnTexture(gpuData.texture);
+      }
+    }
+    destroy() {
+      this._managedTexts.destroy();
+      this._renderer = null;
+    }
+  };
+  CanvasTextPipe.extension = {
+    type: [
+      ExtensionType.WebGLPipes,
+      ExtensionType.WebGPUPipes,
+      ExtensionType.CanvasPipes
+    ],
+    name: "text"
+  };
+
+  // node_modules/pixi.js/lib/scene/text/canvas/CanvasTextSystem.mjs
+  init_Extensions();
+
+  // node_modules/pixi.js/lib/scene/text/shared/AbstractTextSystem.mjs
+  init_TexturePool();
+  init_TextureStyle();
+  init_deprecation();
+  init_TextStyle();
+  init_getPo2TextureFromSource();
+  var AbstractTextSystem = class {
+    constructor(renderer, retainCanvasContext) {
+      this._activeTextures = {};
+      this._renderer = renderer;
+      this._retainCanvasContext = retainCanvasContext;
+    }
+    getTexture(options, _resolution, _style, _textKey) {
+      if (typeof options === "string") {
+        deprecation("8.0.0", "CanvasTextSystem.getTexture: Use object TextOptions instead of separate arguments");
+        options = {
+          text: options,
+          style: _style,
+          resolution: _resolution
+        };
+      }
+      if (!(options.style instanceof TextStyle)) {
+        options.style = new TextStyle(options.style);
+      }
+      if (!(options.textureStyle instanceof TextureStyle)) {
+        options.textureStyle = new TextureStyle(options.textureStyle);
+      }
+      if (typeof options.text !== "string") {
+        options.text = options.text.toString();
+      }
+      const { text, style, textureStyle, autoGenerateMipmaps } = options;
+      const resolution = options.resolution ?? this._renderer.resolution;
+      const { frame, canvasAndContext } = CanvasTextGenerator.getCanvasAndContext({
+        text,
+        style,
+        resolution
+      });
+      const texture = getPo2TextureFromSource(
+        canvasAndContext.canvas,
+        frame.width,
+        frame.height,
+        resolution,
+        autoGenerateMipmaps
+      );
+      if (textureStyle) texture.source.style = textureStyle;
+      if (style.trim) {
+        frame.pad(style.padding);
+        texture.frame.copyFrom(frame);
+        texture.frame.scale(1 / resolution);
+        texture.updateUvs();
+      }
+      if (style.filters) {
+        const filteredTexture = this._applyFilters(texture, style.filters);
+        this.returnTexture(texture);
+        CanvasTextGenerator.returnCanvasAndContext(canvasAndContext);
+        return filteredTexture;
+      }
+      this._renderer.texture.initSource(texture._source);
+      if (!this._retainCanvasContext) {
+        CanvasTextGenerator.returnCanvasAndContext(canvasAndContext);
+      }
+      return texture;
+    }
+    /**
+     * Returns a texture that was created wit the above `getTexture` function.
+     * Handy if you are done with a texture and want to return it to the pool.
+     * @param texture - The texture to be returned.
+     */
+    returnTexture(texture) {
+      const source4 = texture.source;
+      const resource = source4.resource;
+      if (this._retainCanvasContext && resource?.getContext) {
+        const context2 = resource.getContext("2d");
+        if (context2) {
+          CanvasTextGenerator.returnCanvasAndContext({ canvas: resource, context: context2 });
+        }
+      }
+      source4.resource = null;
+      source4.uploadMethodId = "unknown";
+      source4.alphaMode = "no-premultiply-alpha";
+      TexturePool.returnTexture(texture, true);
+    }
+    /**
+     * Renders text to its canvas, and updates its texture.
+     * @deprecated since 8.10.0
+     */
+    renderTextToCanvas() {
+      deprecation(
+        "8.10.0",
+        "CanvasTextSystem.renderTextToCanvas: no longer supported, use CanvasTextSystem.getTexture instead"
+      );
+    }
+    /**
+     * Gets or creates a managed texture for a Text object. This method handles texture reuse and reference counting.
+     * @param text - The Text object that needs a texture
+     * @returns A Texture instance that represents the rendered text
+     * @remarks
+     * This method performs the following:
+     * 1. Sets the appropriate resolution based on auto-resolution settings
+     * 2. Checks if a texture already exists for the text's style
+     * 3. Creates a new texture if needed or returns an existing one
+     * 4. Manages reference counting for texture reuse
+     */
+    getManagedTexture(text) {
+      text._resolution = text._autoResolution ? this._renderer.resolution : text.resolution;
+      const textKey = text.styleKey;
+      if (this._activeTextures[textKey]) {
+        this._increaseReferenceCount(textKey);
+        return this._activeTextures[textKey].texture;
+      }
+      const texture = this.getTexture({
+        text: text.text,
+        style: text.style,
+        resolution: text._resolution,
+        textureStyle: text.textureStyle,
+        autoGenerateMipmaps: text.autoGenerateMipmaps
+      });
+      this._activeTextures[textKey] = {
+        texture,
+        usageCount: 1
+      };
+      return texture;
+    }
+    /**
+     * Decreases the reference count for a texture associated with a text key.
+     * When the reference count reaches zero, the texture is returned to the pool.
+     * @param textKey - The unique key identifying the text style configuration
+     * @remarks
+     * This method is crucial for memory management, ensuring textures are properly
+     * cleaned up when they are no longer needed by any Text instances.
+     */
+    decreaseReferenceCount(textKey) {
+      const activeTexture = this._activeTextures[textKey];
+      if (!activeTexture) return;
+      activeTexture.usageCount--;
+      if (activeTexture.usageCount === 0) {
+        this.returnTexture(activeTexture.texture);
+        this._activeTextures[textKey] = null;
+      }
+    }
+    /**
+     * Gets the current reference count for a texture associated with a text key.
+     * @param textKey - The unique key identifying the text style configuration
+     * @returns The number of Text instances currently using this texture
+     */
+    getReferenceCount(textKey) {
+      return this._activeTextures[textKey]?.usageCount ?? 0;
+    }
+    _increaseReferenceCount(textKey) {
+      this._activeTextures[textKey].usageCount++;
+    }
+    /**
+     * Applies the specified filters to the given texture.
+     *
+     * This method takes a texture and a list of filters, applies the filters to the texture,
+     * and returns the resulting texture. It also ensures that the alpha mode of the resulting
+     * texture is set to 'premultiplied-alpha'.
+     * @param {Texture} texture - The texture to which the filters will be applied.
+     * @param {Filter[]} filters - The filters to apply to the texture.
+     * @returns {Texture} The resulting texture after all filters have been applied.
+     */
+    _applyFilters(texture, filters) {
+      const currentRenderTarget = this._renderer.renderTarget.renderTarget;
+      const resultTexture = this._renderer.filter.generateFilteredTexture({
+        texture,
+        filters
+      });
+      this._renderer.renderTarget.bind(currentRenderTarget, false);
+      return resultTexture;
+    }
+    destroy() {
+      this._renderer = null;
+      for (const key in this._activeTextures) {
+        if (this._activeTextures[key]) this.returnTexture(this._activeTextures[key].texture);
+      }
+      this._activeTextures = null;
+    }
+  };
+
+  // node_modules/pixi.js/lib/scene/text/canvas/CanvasTextSystem.mjs
+  var CanvasRendererTextSystem = class extends AbstractTextSystem {
+    constructor(renderer) {
+      super(renderer, true);
+    }
+  };
+  CanvasRendererTextSystem.extension = {
+    type: [
+      ExtensionType.CanvasSystem
+    ],
+    name: "canvasText"
+  };
+
+  // node_modules/pixi.js/lib/scene/text/shared/GpuTextSystem.mjs
+  init_Extensions();
+  var CanvasTextSystem = class extends AbstractTextSystem {
+    constructor(renderer) {
+      super(renderer, false);
+    }
+  };
+  CanvasTextSystem.extension = {
+    type: [
+      ExtensionType.WebGLSystem,
+      ExtensionType.WebGPUSystem
+    ],
+    name: "canvasText"
+  };
+
+  // node_modules/pixi.js/lib/scene/text/init.mjs
+  extensions.add(CanvasRendererTextSystem);
+  extensions.add(CanvasTextSystem);
+  extensions.add(CanvasTextPipe);
+
+  // node_modules/pixi.js/lib/scene/text/Text.mjs
+  var Text = class extends AbstractText {
+    constructor(...args) {
+      const options = ensureTextOptions(args, "Text");
+      super(options, TextStyle);
+      this.renderPipeId = "text";
+      if (options.textureStyle) {
+        this.textureStyle = options.textureStyle instanceof TextureStyle ? options.textureStyle : new TextureStyle(options.textureStyle);
+      }
+      this.autoGenerateMipmaps = options.autoGenerateMipmaps ?? TextureSource.defaultOptions.autoGenerateMipmaps;
+    }
+    /** @private */
+    updateBounds() {
+      const bounds = this._bounds;
+      const anchor = this._anchor;
+      let width = 0;
+      let height = 0;
+      if (this._style.trim) {
+        const { frame, canvasAndContext } = CanvasTextGenerator.getCanvasAndContext({
+          text: this.text,
+          style: this._style,
+          resolution: 1
+        });
+        CanvasTextGenerator.returnCanvasAndContext(canvasAndContext);
+        width = frame.width;
+        height = frame.height;
+      } else {
+        const canvasMeasurement = CanvasTextMetrics.measureText(
+          this._text,
+          this._style
+        );
+        width = canvasMeasurement.width;
+        height = canvasMeasurement.height;
+      }
+      bounds.minX = -anchor._x * width;
+      bounds.maxX = bounds.minX + width;
+      bounds.minY = -anchor._y * height;
+      bounds.maxY = bounds.minY + height;
+    }
+  };
+
   // node_modules/pixi.js/lib/index.mjs
   init_textureFrom();
   init_Container();
@@ -48083,7 +49380,6 @@ ${e2}`);
     if (percentage === 100) {
       loadBar.style.display = "none";
       loadBackground.style.display = "none";
-      spinbtn.style.display = "block";
       getSoundManager().backgroundSound.play();
     }
     console.log(`Assets loaded: ${percentage}%`);
@@ -48110,6 +49406,16 @@ ${e2}`);
       calculatepercetage();
     }
     return assetsMap[`${textureName}`];
+  };
+  var soundPlayLogo = async () => {
+    const soundUrl = "assets/sound_logo/volume.png";
+    const soundtexture = await Assets.load(soundUrl);
+    return soundtexture;
+  };
+  var soundMuteLogo = async () => {
+    const soundUrl = "assets/sound_logo/enable-sound.png";
+    const soundtexture = await Assets.load(soundUrl);
+    return soundtexture;
   };
   var assetMap = [];
   var assets = [
@@ -48216,7 +49522,7 @@ ${e2}`);
       this.isSpining = true;
       this.bounceanimation();
       setTimeout(() => {
-        getSpinBtn().innerHTML = "STOP";
+        changeBtnText("STOP");
         Ticker.shared.add(this.spinboundle);
         this.blurSymbols(1);
       }, 50 * this.reelId);
@@ -48225,7 +49531,7 @@ ${e2}`);
         this.blurSymbols(0);
         if (this.reelId == 5) {
           getSoundManager().spinSound.stop();
-          getSpinBtn().innerHTML = "SPIN";
+          changeBtnText("SPIN");
         }
       }, 700 * this.reelId);
     }
@@ -48350,6 +49656,7 @@ ${e2}`);
   // src/ts/autio.ts
   var import_howler = __toESM(require_howler(), 1);
   var SoundManager = class {
+    soundbtn;
     audioPaths = {
       background: "assets/audio/background.mp3",
       click: "assets/audio/click.mp3",
@@ -48358,8 +49665,12 @@ ${e2}`);
       win: "assets/audio/win.mp3",
       bigWin: "assets/audio/bigWin.mp3"
     };
+    isMuted = false;
+    playSprite;
+    muteSprite;
     constructor() {
       import_howler.Howler.autoUnlock = true;
+      this.createSoundBtn();
     }
     backgroundSound = new import_howler.Howl({
       src: [this.audioPaths.background],
@@ -48384,4755 +49695,266 @@ ${e2}`);
     // public bigWinSound = new Howl({
     //     src: [this.audioPaths.bigWin],
     // });
+    async createSoundBtn() {
+      this.soundbtn = new Sprite();
+      this.soundbtn.label = `_soundBtn_`;
+      this.soundbtn.x = globalThis.screen.width / 2 - 400;
+      this.soundbtn.y = globalThis.screen.height - 90;
+      const texture1 = await soundPlayLogo();
+      this.playSprite = new Sprite(texture1);
+      this.playSprite.width = 80;
+      this.playSprite.height = 80;
+      const texture2 = await soundMuteLogo();
+      this.muteSprite = new Sprite(texture2);
+      this.muteSprite.width = 80;
+      this.muteSprite.height = 80;
+      this.soundbtn.addChild(this.playSprite);
+      getStage().addChild(this.soundbtn);
+      this.checkstatuSound();
+    }
+    checkstatuSound() {
+      this.soundbtn.eventMode = "static";
+      this.soundbtn.cursor = "pointer";
+      this.soundbtn.on("pointerdown", () => {
+        this.isMuted = !this.isMuted;
+        import_howler.Howler.mute(this.isMuted);
+        this.soundbtn.removeChildren();
+        this.soundbtn.addChild(this.isMuted ? this.muteSprite : this.playSprite);
+      });
+    }
   };
 
-  // node_modules/typescript/dist/enums/characterCodes.js
-  var CharacterCodes;
-  (function(CharacterCodes2) {
-    CharacterCodes2[CharacterCodes2["EOF"] = -1] = "EOF";
-    CharacterCodes2[CharacterCodes2["nullCharacter"] = 0] = "nullCharacter";
-    CharacterCodes2[CharacterCodes2["maxAsciiCharacter"] = 127] = "maxAsciiCharacter";
-    CharacterCodes2[CharacterCodes2["lineFeed"] = 10] = "lineFeed";
-    CharacterCodes2[CharacterCodes2["carriageReturn"] = 13] = "carriageReturn";
-    CharacterCodes2[CharacterCodes2["lineSeparator"] = 8232] = "lineSeparator";
-    CharacterCodes2[CharacterCodes2["paragraphSeparator"] = 8233] = "paragraphSeparator";
-    CharacterCodes2[CharacterCodes2["nextLine"] = 133] = "nextLine";
-    CharacterCodes2[CharacterCodes2["space"] = 32] = "space";
-    CharacterCodes2[CharacterCodes2["nonBreakingSpace"] = 160] = "nonBreakingSpace";
-    CharacterCodes2[CharacterCodes2["enQuad"] = 8192] = "enQuad";
-    CharacterCodes2[CharacterCodes2["emQuad"] = 8193] = "emQuad";
-    CharacterCodes2[CharacterCodes2["enSpace"] = 8194] = "enSpace";
-    CharacterCodes2[CharacterCodes2["emSpace"] = 8195] = "emSpace";
-    CharacterCodes2[CharacterCodes2["threePerEmSpace"] = 8196] = "threePerEmSpace";
-    CharacterCodes2[CharacterCodes2["fourPerEmSpace"] = 8197] = "fourPerEmSpace";
-    CharacterCodes2[CharacterCodes2["sixPerEmSpace"] = 8198] = "sixPerEmSpace";
-    CharacterCodes2[CharacterCodes2["figureSpace"] = 8199] = "figureSpace";
-    CharacterCodes2[CharacterCodes2["punctuationSpace"] = 8200] = "punctuationSpace";
-    CharacterCodes2[CharacterCodes2["thinSpace"] = 8201] = "thinSpace";
-    CharacterCodes2[CharacterCodes2["hairSpace"] = 8202] = "hairSpace";
-    CharacterCodes2[CharacterCodes2["zeroWidthSpace"] = 8203] = "zeroWidthSpace";
-    CharacterCodes2[CharacterCodes2["narrowNoBreakSpace"] = 8239] = "narrowNoBreakSpace";
-    CharacterCodes2[CharacterCodes2["ideographicSpace"] = 12288] = "ideographicSpace";
-    CharacterCodes2[CharacterCodes2["mathematicalSpace"] = 8287] = "mathematicalSpace";
-    CharacterCodes2[CharacterCodes2["ogham"] = 5765] = "ogham";
-    CharacterCodes2[CharacterCodes2["replacementCharacter"] = 65533] = "replacementCharacter";
-    CharacterCodes2[CharacterCodes2["_"] = 95] = "_";
-    CharacterCodes2[CharacterCodes2["$"] = 36] = "$";
-    CharacterCodes2[CharacterCodes2["_0"] = 48] = "_0";
-    CharacterCodes2[CharacterCodes2["_1"] = 49] = "_1";
-    CharacterCodes2[CharacterCodes2["_2"] = 50] = "_2";
-    CharacterCodes2[CharacterCodes2["_3"] = 51] = "_3";
-    CharacterCodes2[CharacterCodes2["_4"] = 52] = "_4";
-    CharacterCodes2[CharacterCodes2["_5"] = 53] = "_5";
-    CharacterCodes2[CharacterCodes2["_6"] = 54] = "_6";
-    CharacterCodes2[CharacterCodes2["_7"] = 55] = "_7";
-    CharacterCodes2[CharacterCodes2["_8"] = 56] = "_8";
-    CharacterCodes2[CharacterCodes2["_9"] = 57] = "_9";
-    CharacterCodes2[CharacterCodes2["a"] = 97] = "a";
-    CharacterCodes2[CharacterCodes2["b"] = 98] = "b";
-    CharacterCodes2[CharacterCodes2["c"] = 99] = "c";
-    CharacterCodes2[CharacterCodes2["d"] = 100] = "d";
-    CharacterCodes2[CharacterCodes2["e"] = 101] = "e";
-    CharacterCodes2[CharacterCodes2["f"] = 102] = "f";
-    CharacterCodes2[CharacterCodes2["g"] = 103] = "g";
-    CharacterCodes2[CharacterCodes2["h"] = 104] = "h";
-    CharacterCodes2[CharacterCodes2["i"] = 105] = "i";
-    CharacterCodes2[CharacterCodes2["j"] = 106] = "j";
-    CharacterCodes2[CharacterCodes2["k"] = 107] = "k";
-    CharacterCodes2[CharacterCodes2["l"] = 108] = "l";
-    CharacterCodes2[CharacterCodes2["m"] = 109] = "m";
-    CharacterCodes2[CharacterCodes2["n"] = 110] = "n";
-    CharacterCodes2[CharacterCodes2["o"] = 111] = "o";
-    CharacterCodes2[CharacterCodes2["p"] = 112] = "p";
-    CharacterCodes2[CharacterCodes2["q"] = 113] = "q";
-    CharacterCodes2[CharacterCodes2["r"] = 114] = "r";
-    CharacterCodes2[CharacterCodes2["s"] = 115] = "s";
-    CharacterCodes2[CharacterCodes2["t"] = 116] = "t";
-    CharacterCodes2[CharacterCodes2["u"] = 117] = "u";
-    CharacterCodes2[CharacterCodes2["v"] = 118] = "v";
-    CharacterCodes2[CharacterCodes2["w"] = 119] = "w";
-    CharacterCodes2[CharacterCodes2["x"] = 120] = "x";
-    CharacterCodes2[CharacterCodes2["y"] = 121] = "y";
-    CharacterCodes2[CharacterCodes2["z"] = 122] = "z";
-    CharacterCodes2[CharacterCodes2["A"] = 65] = "A";
-    CharacterCodes2[CharacterCodes2["B"] = 66] = "B";
-    CharacterCodes2[CharacterCodes2["C"] = 67] = "C";
-    CharacterCodes2[CharacterCodes2["D"] = 68] = "D";
-    CharacterCodes2[CharacterCodes2["E"] = 69] = "E";
-    CharacterCodes2[CharacterCodes2["F"] = 70] = "F";
-    CharacterCodes2[CharacterCodes2["G"] = 71] = "G";
-    CharacterCodes2[CharacterCodes2["H"] = 72] = "H";
-    CharacterCodes2[CharacterCodes2["I"] = 73] = "I";
-    CharacterCodes2[CharacterCodes2["J"] = 74] = "J";
-    CharacterCodes2[CharacterCodes2["K"] = 75] = "K";
-    CharacterCodes2[CharacterCodes2["L"] = 76] = "L";
-    CharacterCodes2[CharacterCodes2["M"] = 77] = "M";
-    CharacterCodes2[CharacterCodes2["N"] = 78] = "N";
-    CharacterCodes2[CharacterCodes2["O"] = 79] = "O";
-    CharacterCodes2[CharacterCodes2["P"] = 80] = "P";
-    CharacterCodes2[CharacterCodes2["Q"] = 81] = "Q";
-    CharacterCodes2[CharacterCodes2["R"] = 82] = "R";
-    CharacterCodes2[CharacterCodes2["S"] = 83] = "S";
-    CharacterCodes2[CharacterCodes2["T"] = 84] = "T";
-    CharacterCodes2[CharacterCodes2["U"] = 85] = "U";
-    CharacterCodes2[CharacterCodes2["V"] = 86] = "V";
-    CharacterCodes2[CharacterCodes2["W"] = 87] = "W";
-    CharacterCodes2[CharacterCodes2["X"] = 88] = "X";
-    CharacterCodes2[CharacterCodes2["Y"] = 89] = "Y";
-    CharacterCodes2[CharacterCodes2["Z"] = 90] = "Z";
-    CharacterCodes2[CharacterCodes2["ampersand"] = 38] = "ampersand";
-    CharacterCodes2[CharacterCodes2["asterisk"] = 42] = "asterisk";
-    CharacterCodes2[CharacterCodes2["at"] = 64] = "at";
-    CharacterCodes2[CharacterCodes2["backslash"] = 92] = "backslash";
-    CharacterCodes2[CharacterCodes2["backtick"] = 96] = "backtick";
-    CharacterCodes2[CharacterCodes2["bar"] = 124] = "bar";
-    CharacterCodes2[CharacterCodes2["caret"] = 94] = "caret";
-    CharacterCodes2[CharacterCodes2["closeBrace"] = 125] = "closeBrace";
-    CharacterCodes2[CharacterCodes2["closeBracket"] = 93] = "closeBracket";
-    CharacterCodes2[CharacterCodes2["closeParen"] = 41] = "closeParen";
-    CharacterCodes2[CharacterCodes2["colon"] = 58] = "colon";
-    CharacterCodes2[CharacterCodes2["comma"] = 44] = "comma";
-    CharacterCodes2[CharacterCodes2["dot"] = 46] = "dot";
-    CharacterCodes2[CharacterCodes2["doubleQuote"] = 34] = "doubleQuote";
-    CharacterCodes2[CharacterCodes2["equals"] = 61] = "equals";
-    CharacterCodes2[CharacterCodes2["exclamation"] = 33] = "exclamation";
-    CharacterCodes2[CharacterCodes2["greaterThan"] = 62] = "greaterThan";
-    CharacterCodes2[CharacterCodes2["hash"] = 35] = "hash";
-    CharacterCodes2[CharacterCodes2["lessThan"] = 60] = "lessThan";
-    CharacterCodes2[CharacterCodes2["minus"] = 45] = "minus";
-    CharacterCodes2[CharacterCodes2["openBrace"] = 123] = "openBrace";
-    CharacterCodes2[CharacterCodes2["openBracket"] = 91] = "openBracket";
-    CharacterCodes2[CharacterCodes2["openParen"] = 40] = "openParen";
-    CharacterCodes2[CharacterCodes2["percent"] = 37] = "percent";
-    CharacterCodes2[CharacterCodes2["plus"] = 43] = "plus";
-    CharacterCodes2[CharacterCodes2["question"] = 63] = "question";
-    CharacterCodes2[CharacterCodes2["semicolon"] = 59] = "semicolon";
-    CharacterCodes2[CharacterCodes2["singleQuote"] = 39] = "singleQuote";
-    CharacterCodes2[CharacterCodes2["slash"] = 47] = "slash";
-    CharacterCodes2[CharacterCodes2["tilde"] = 126] = "tilde";
-    CharacterCodes2[CharacterCodes2["backspace"] = 8] = "backspace";
-    CharacterCodes2[CharacterCodes2["formFeed"] = 12] = "formFeed";
-    CharacterCodes2[CharacterCodes2["byteOrderMark"] = 65279] = "byteOrderMark";
-    CharacterCodes2[CharacterCodes2["tab"] = 9] = "tab";
-    CharacterCodes2[CharacterCodes2["verticalTab"] = 11] = "verticalTab";
-  })(CharacterCodes || (CharacterCodes = {}));
-
-  // node_modules/typescript/dist/enums/commentDirectiveType.js
-  var CommentDirectiveType;
-  (function(CommentDirectiveType2) {
-    CommentDirectiveType2[CommentDirectiveType2["ExpectError"] = 0] = "ExpectError";
-    CommentDirectiveType2[CommentDirectiveType2["Ignore"] = 1] = "Ignore";
-  })(CommentDirectiveType || (CommentDirectiveType = {}));
-
-  // node_modules/typescript/dist/enums/internalSymbolName.js
-  var InternalSymbolName;
-  (function(InternalSymbolName2) {
-    InternalSymbolName2["Call"] = "__call";
-    InternalSymbolName2["Constructor"] = "__constructor";
-    InternalSymbolName2["New"] = "__new";
-    InternalSymbolName2["Index"] = "__index";
-    InternalSymbolName2["ExportStar"] = "__export";
-    InternalSymbolName2["Global"] = "__global";
-    InternalSymbolName2["Missing"] = "__missing";
-    InternalSymbolName2["Type"] = "__type";
-    InternalSymbolName2["Object"] = "__object";
-    InternalSymbolName2["JSXAttributes"] = "__jsxAttributes";
-    InternalSymbolName2["Class"] = "__class";
-    InternalSymbolName2["Function"] = "__function";
-    InternalSymbolName2["Computed"] = "__computed";
-    InternalSymbolName2["AssignmentDeclaration"] = "__assignment";
-    InternalSymbolName2["InstantiationExpression"] = "__instantiationExpression";
-    InternalSymbolName2["ImportAttributes"] = "__importAttributes";
-    InternalSymbolName2["ExportEquals"] = "export=";
-    InternalSymbolName2["Default"] = "default";
-    InternalSymbolName2["This"] = "this";
-    InternalSymbolName2["ModuleExports"] = "module.exports";
-  })(InternalSymbolName || (InternalSymbolName = {}));
-
-  // node_modules/typescript/dist/enums/languageVariant.js
-  var LanguageVariant;
-  (function(LanguageVariant2) {
-    LanguageVariant2[LanguageVariant2["Standard"] = 0] = "Standard";
-    LanguageVariant2[LanguageVariant2["JSX"] = 1] = "JSX";
-  })(LanguageVariant || (LanguageVariant = {}));
-
-  // node_modules/typescript/dist/enums/modifierFlags.js
-  var ModifierFlags;
-  (function(ModifierFlags2) {
-    ModifierFlags2[ModifierFlags2["None"] = 0] = "None";
-    ModifierFlags2[ModifierFlags2["Public"] = 1] = "Public";
-    ModifierFlags2[ModifierFlags2["Private"] = 2] = "Private";
-    ModifierFlags2[ModifierFlags2["Protected"] = 4] = "Protected";
-    ModifierFlags2[ModifierFlags2["Readonly"] = 8] = "Readonly";
-    ModifierFlags2[ModifierFlags2["Override"] = 16] = "Override";
-    ModifierFlags2[ModifierFlags2["Export"] = 32] = "Export";
-    ModifierFlags2[ModifierFlags2["Abstract"] = 64] = "Abstract";
-    ModifierFlags2[ModifierFlags2["Ambient"] = 128] = "Ambient";
-    ModifierFlags2[ModifierFlags2["Static"] = 256] = "Static";
-    ModifierFlags2[ModifierFlags2["Accessor"] = 512] = "Accessor";
-    ModifierFlags2[ModifierFlags2["Async"] = 1024] = "Async";
-    ModifierFlags2[ModifierFlags2["Default"] = 2048] = "Default";
-    ModifierFlags2[ModifierFlags2["Const"] = 4096] = "Const";
-    ModifierFlags2[ModifierFlags2["In"] = 8192] = "In";
-    ModifierFlags2[ModifierFlags2["Out"] = 16384] = "Out";
-    ModifierFlags2[ModifierFlags2["Decorator"] = 32768] = "Decorator";
-    ModifierFlags2[ModifierFlags2["Deprecated"] = 65536] = "Deprecated";
-    ModifierFlags2[ModifierFlags2["JSDocPublic"] = 8388608] = "JSDocPublic";
-    ModifierFlags2[ModifierFlags2["JSDocPrivate"] = 16777216] = "JSDocPrivate";
-    ModifierFlags2[ModifierFlags2["JSDocProtected"] = 33554432] = "JSDocProtected";
-    ModifierFlags2[ModifierFlags2["JSDocReadonly"] = 67108864] = "JSDocReadonly";
-    ModifierFlags2[ModifierFlags2["JSDocOverride"] = 134217728] = "JSDocOverride";
-    ModifierFlags2[ModifierFlags2["HasComputedJSDocModifiers"] = 268435456] = "HasComputedJSDocModifiers";
-    ModifierFlags2[ModifierFlags2["HasComputedFlags"] = 536870912] = "HasComputedFlags";
-    ModifierFlags2[ModifierFlags2["SyntacticOrJSDocModifiers"] = 31] = "SyntacticOrJSDocModifiers";
-    ModifierFlags2[ModifierFlags2["SyntacticOnlyModifiers"] = 65504] = "SyntacticOnlyModifiers";
-    ModifierFlags2[ModifierFlags2["SyntacticModifiers"] = 65535] = "SyntacticModifiers";
-    ModifierFlags2[ModifierFlags2["JSDocCacheOnlyModifiers"] = 260046848] = "JSDocCacheOnlyModifiers";
-    ModifierFlags2[ModifierFlags2["JSDocOnlyModifiers"] = 65536] = "JSDocOnlyModifiers";
-    ModifierFlags2[ModifierFlags2["NonCacheOnlyModifiers"] = 131071] = "NonCacheOnlyModifiers";
-    ModifierFlags2[ModifierFlags2["AccessibilityModifier"] = 7] = "AccessibilityModifier";
-    ModifierFlags2[ModifierFlags2["ParameterPropertyModifier"] = 31] = "ParameterPropertyModifier";
-    ModifierFlags2[ModifierFlags2["NonPublicAccessibilityModifier"] = 6] = "NonPublicAccessibilityModifier";
-    ModifierFlags2[ModifierFlags2["TypeScriptModifier"] = 28895] = "TypeScriptModifier";
-    ModifierFlags2[ModifierFlags2["ExportDefault"] = 2080] = "ExportDefault";
-    ModifierFlags2[ModifierFlags2["All"] = 131071] = "All";
-    ModifierFlags2[ModifierFlags2["Modifier"] = 98303] = "Modifier";
-    ModifierFlags2[ModifierFlags2["JavaScript"] = 3872] = "JavaScript";
-  })(ModifierFlags || (ModifierFlags = {}));
-
-  // node_modules/typescript/dist/enums/nodeFlags.js
-  var NodeFlags;
-  (function(NodeFlags2) {
-    NodeFlags2[NodeFlags2["None"] = 0] = "None";
-    NodeFlags2[NodeFlags2["Let"] = 1] = "Let";
-    NodeFlags2[NodeFlags2["Const"] = 2] = "Const";
-    NodeFlags2[NodeFlags2["Using"] = 4] = "Using";
-    NodeFlags2[NodeFlags2["Reparsed"] = 8] = "Reparsed";
-    NodeFlags2[NodeFlags2["Synthesized"] = 16] = "Synthesized";
-    NodeFlags2[NodeFlags2["OptionalChain"] = 32] = "OptionalChain";
-    NodeFlags2[NodeFlags2["ExportContext"] = 64] = "ExportContext";
-    NodeFlags2[NodeFlags2["ContainsThis"] = 128] = "ContainsThis";
-    NodeFlags2[NodeFlags2["HasImplicitReturn"] = 256] = "HasImplicitReturn";
-    NodeFlags2[NodeFlags2["HasExplicitReturn"] = 512] = "HasExplicitReturn";
-    NodeFlags2[NodeFlags2["DisallowInContext"] = 1024] = "DisallowInContext";
-    NodeFlags2[NodeFlags2["YieldContext"] = 2048] = "YieldContext";
-    NodeFlags2[NodeFlags2["DecoratorContext"] = 4096] = "DecoratorContext";
-    NodeFlags2[NodeFlags2["AwaitContext"] = 8192] = "AwaitContext";
-    NodeFlags2[NodeFlags2["DisallowConditionalTypesContext"] = 16384] = "DisallowConditionalTypesContext";
-    NodeFlags2[NodeFlags2["ThisNodeHasError"] = 32768] = "ThisNodeHasError";
-    NodeFlags2[NodeFlags2["JavaScriptFile"] = 65536] = "JavaScriptFile";
-    NodeFlags2[NodeFlags2["ThisNodeOrAnySubNodesHasError"] = 131072] = "ThisNodeOrAnySubNodesHasError";
-    NodeFlags2[NodeFlags2["HasAsyncFunctions"] = 262144] = "HasAsyncFunctions";
-    NodeFlags2[NodeFlags2["PossiblyContainsDynamicImport"] = 524288] = "PossiblyContainsDynamicImport";
-    NodeFlags2[NodeFlags2["PossiblyContainsImportMeta"] = 1048576] = "PossiblyContainsImportMeta";
-    NodeFlags2[NodeFlags2["HasJSDoc"] = 2097152] = "HasJSDoc";
-    NodeFlags2[NodeFlags2["JSDoc"] = 4194304] = "JSDoc";
-    NodeFlags2[NodeFlags2["Ambient"] = 8388608] = "Ambient";
-    NodeFlags2[NodeFlags2["InWithStatement"] = 16777216] = "InWithStatement";
-    NodeFlags2[NodeFlags2["JsonFile"] = 33554432] = "JsonFile";
-    NodeFlags2[NodeFlags2["PossiblyContainsDeprecatedTag"] = 67108864] = "PossiblyContainsDeprecatedTag";
-    NodeFlags2[NodeFlags2["Unreachable"] = 134217728] = "Unreachable";
-    NodeFlags2[NodeFlags2["ReparserTransformedLiteral"] = 268435456] = "ReparserTransformedLiteral";
-    NodeFlags2[NodeFlags2["BlockScoped"] = 7] = "BlockScoped";
-    NodeFlags2[NodeFlags2["Constant"] = 6] = "Constant";
-    NodeFlags2[NodeFlags2["AwaitUsing"] = 6] = "AwaitUsing";
-    NodeFlags2[NodeFlags2["ReachabilityCheckFlags"] = 768] = "ReachabilityCheckFlags";
-    NodeFlags2[NodeFlags2["ReachabilityAndEmitFlags"] = 262912] = "ReachabilityAndEmitFlags";
-    NodeFlags2[NodeFlags2["ContextFlags"] = 25263104] = "ContextFlags";
-    NodeFlags2[NodeFlags2["TypeExcludesFlags"] = 10240] = "TypeExcludesFlags";
-    NodeFlags2[NodeFlags2["PermanentlySetIncrementalFlags"] = 1572864] = "PermanentlySetIncrementalFlags";
-    NodeFlags2[NodeFlags2["IdentifierHasExtendedUnicodeEscape"] = 128] = "IdentifierHasExtendedUnicodeEscape";
-    NodeFlags2[NodeFlags2["IdentifierIsInJSDocNamespace"] = 262144] = "IdentifierIsInJSDocNamespace";
-    NodeFlags2[NodeFlags2["NestedNamespace"] = 32] = "NestedNamespace";
-  })(NodeFlags || (NodeFlags = {}));
-
-  // node_modules/typescript/dist/enums/regularExpressionFlags.js
-  var RegularExpressionFlags;
-  (function(RegularExpressionFlags2) {
-    RegularExpressionFlags2[RegularExpressionFlags2["None"] = 0] = "None";
-    RegularExpressionFlags2[RegularExpressionFlags2["HasIndices"] = 1] = "HasIndices";
-    RegularExpressionFlags2[RegularExpressionFlags2["Global"] = 2] = "Global";
-    RegularExpressionFlags2[RegularExpressionFlags2["IgnoreCase"] = 4] = "IgnoreCase";
-    RegularExpressionFlags2[RegularExpressionFlags2["Multiline"] = 8] = "Multiline";
-    RegularExpressionFlags2[RegularExpressionFlags2["DotAll"] = 16] = "DotAll";
-    RegularExpressionFlags2[RegularExpressionFlags2["Unicode"] = 32] = "Unicode";
-    RegularExpressionFlags2[RegularExpressionFlags2["UnicodeSets"] = 64] = "UnicodeSets";
-    RegularExpressionFlags2[RegularExpressionFlags2["Sticky"] = 128] = "Sticky";
-    RegularExpressionFlags2[RegularExpressionFlags2["AnyUnicodeMode"] = 96] = "AnyUnicodeMode";
-  })(RegularExpressionFlags || (RegularExpressionFlags = {}));
-
-  // node_modules/typescript/dist/enums/scriptKind.js
-  var ScriptKind;
-  (function(ScriptKind2) {
-    ScriptKind2[ScriptKind2["Unknown"] = 0] = "Unknown";
-    ScriptKind2[ScriptKind2["JS"] = 1] = "JS";
-    ScriptKind2[ScriptKind2["JSX"] = 2] = "JSX";
-    ScriptKind2[ScriptKind2["TS"] = 3] = "TS";
-    ScriptKind2[ScriptKind2["TSX"] = 4] = "TSX";
-    ScriptKind2[ScriptKind2["External"] = 5] = "External";
-    ScriptKind2[ScriptKind2["JSON"] = 6] = "JSON";
-    ScriptKind2[ScriptKind2["Deferred"] = 7] = "Deferred";
-  })(ScriptKind || (ScriptKind = {}));
-
-  // node_modules/typescript/dist/enums/scriptTarget.js
-  var ScriptTarget;
-  (function(ScriptTarget2) {
-    ScriptTarget2[ScriptTarget2["ES2015"] = 2] = "ES2015";
-    ScriptTarget2[ScriptTarget2["ES2016"] = 3] = "ES2016";
-    ScriptTarget2[ScriptTarget2["ES2017"] = 4] = "ES2017";
-    ScriptTarget2[ScriptTarget2["ES2018"] = 5] = "ES2018";
-    ScriptTarget2[ScriptTarget2["ES2019"] = 6] = "ES2019";
-    ScriptTarget2[ScriptTarget2["ES2020"] = 7] = "ES2020";
-    ScriptTarget2[ScriptTarget2["ES2021"] = 8] = "ES2021";
-    ScriptTarget2[ScriptTarget2["ES2022"] = 9] = "ES2022";
-    ScriptTarget2[ScriptTarget2["ES2023"] = 10] = "ES2023";
-    ScriptTarget2[ScriptTarget2["ES2024"] = 11] = "ES2024";
-    ScriptTarget2[ScriptTarget2["ES2025"] = 12] = "ES2025";
-    ScriptTarget2[ScriptTarget2["ESNext"] = 99] = "ESNext";
-    ScriptTarget2[ScriptTarget2["JSON"] = 100] = "JSON";
-    ScriptTarget2[ScriptTarget2["Latest"] = 99] = "Latest";
-  })(ScriptTarget || (ScriptTarget = {}));
-
-  // node_modules/typescript/dist/enums/syntaxKind.js
-  var SyntaxKind;
-  (function(SyntaxKind2) {
-    SyntaxKind2[SyntaxKind2["Unknown"] = 0] = "Unknown";
-    SyntaxKind2[SyntaxKind2["EndOfFile"] = 1] = "EndOfFile";
-    SyntaxKind2[SyntaxKind2["SingleLineCommentTrivia"] = 2] = "SingleLineCommentTrivia";
-    SyntaxKind2[SyntaxKind2["MultiLineCommentTrivia"] = 3] = "MultiLineCommentTrivia";
-    SyntaxKind2[SyntaxKind2["NewLineTrivia"] = 4] = "NewLineTrivia";
-    SyntaxKind2[SyntaxKind2["WhitespaceTrivia"] = 5] = "WhitespaceTrivia";
-    SyntaxKind2[SyntaxKind2["ConflictMarkerTrivia"] = 6] = "ConflictMarkerTrivia";
-    SyntaxKind2[SyntaxKind2["NonTextFileMarkerTrivia"] = 7] = "NonTextFileMarkerTrivia";
-    SyntaxKind2[SyntaxKind2["NumericLiteral"] = 8] = "NumericLiteral";
-    SyntaxKind2[SyntaxKind2["BigIntLiteral"] = 9] = "BigIntLiteral";
-    SyntaxKind2[SyntaxKind2["StringLiteral"] = 10] = "StringLiteral";
-    SyntaxKind2[SyntaxKind2["JsxText"] = 11] = "JsxText";
-    SyntaxKind2[SyntaxKind2["JsxTextAllWhiteSpaces"] = 12] = "JsxTextAllWhiteSpaces";
-    SyntaxKind2[SyntaxKind2["RegularExpressionLiteral"] = 13] = "RegularExpressionLiteral";
-    SyntaxKind2[SyntaxKind2["NoSubstitutionTemplateLiteral"] = 14] = "NoSubstitutionTemplateLiteral";
-    SyntaxKind2[SyntaxKind2["TemplateHead"] = 15] = "TemplateHead";
-    SyntaxKind2[SyntaxKind2["TemplateMiddle"] = 16] = "TemplateMiddle";
-    SyntaxKind2[SyntaxKind2["TemplateTail"] = 17] = "TemplateTail";
-    SyntaxKind2[SyntaxKind2["OpenBraceToken"] = 18] = "OpenBraceToken";
-    SyntaxKind2[SyntaxKind2["CloseBraceToken"] = 19] = "CloseBraceToken";
-    SyntaxKind2[SyntaxKind2["OpenParenToken"] = 20] = "OpenParenToken";
-    SyntaxKind2[SyntaxKind2["CloseParenToken"] = 21] = "CloseParenToken";
-    SyntaxKind2[SyntaxKind2["OpenBracketToken"] = 22] = "OpenBracketToken";
-    SyntaxKind2[SyntaxKind2["CloseBracketToken"] = 23] = "CloseBracketToken";
-    SyntaxKind2[SyntaxKind2["DotToken"] = 24] = "DotToken";
-    SyntaxKind2[SyntaxKind2["DotDotDotToken"] = 25] = "DotDotDotToken";
-    SyntaxKind2[SyntaxKind2["SemicolonToken"] = 26] = "SemicolonToken";
-    SyntaxKind2[SyntaxKind2["CommaToken"] = 27] = "CommaToken";
-    SyntaxKind2[SyntaxKind2["QuestionDotToken"] = 28] = "QuestionDotToken";
-    SyntaxKind2[SyntaxKind2["LessThanToken"] = 29] = "LessThanToken";
-    SyntaxKind2[SyntaxKind2["LessThanSlashToken"] = 30] = "LessThanSlashToken";
-    SyntaxKind2[SyntaxKind2["GreaterThanToken"] = 31] = "GreaterThanToken";
-    SyntaxKind2[SyntaxKind2["LessThanEqualsToken"] = 32] = "LessThanEqualsToken";
-    SyntaxKind2[SyntaxKind2["GreaterThanEqualsToken"] = 33] = "GreaterThanEqualsToken";
-    SyntaxKind2[SyntaxKind2["EqualsEqualsToken"] = 34] = "EqualsEqualsToken";
-    SyntaxKind2[SyntaxKind2["ExclamationEqualsToken"] = 35] = "ExclamationEqualsToken";
-    SyntaxKind2[SyntaxKind2["EqualsEqualsEqualsToken"] = 36] = "EqualsEqualsEqualsToken";
-    SyntaxKind2[SyntaxKind2["ExclamationEqualsEqualsToken"] = 37] = "ExclamationEqualsEqualsToken";
-    SyntaxKind2[SyntaxKind2["EqualsGreaterThanToken"] = 38] = "EqualsGreaterThanToken";
-    SyntaxKind2[SyntaxKind2["PlusToken"] = 39] = "PlusToken";
-    SyntaxKind2[SyntaxKind2["MinusToken"] = 40] = "MinusToken";
-    SyntaxKind2[SyntaxKind2["AsteriskToken"] = 41] = "AsteriskToken";
-    SyntaxKind2[SyntaxKind2["AsteriskAsteriskToken"] = 42] = "AsteriskAsteriskToken";
-    SyntaxKind2[SyntaxKind2["SlashToken"] = 43] = "SlashToken";
-    SyntaxKind2[SyntaxKind2["PercentToken"] = 44] = "PercentToken";
-    SyntaxKind2[SyntaxKind2["PlusPlusToken"] = 45] = "PlusPlusToken";
-    SyntaxKind2[SyntaxKind2["MinusMinusToken"] = 46] = "MinusMinusToken";
-    SyntaxKind2[SyntaxKind2["LessThanLessThanToken"] = 47] = "LessThanLessThanToken";
-    SyntaxKind2[SyntaxKind2["GreaterThanGreaterThanToken"] = 48] = "GreaterThanGreaterThanToken";
-    SyntaxKind2[SyntaxKind2["GreaterThanGreaterThanGreaterThanToken"] = 49] = "GreaterThanGreaterThanGreaterThanToken";
-    SyntaxKind2[SyntaxKind2["AmpersandToken"] = 50] = "AmpersandToken";
-    SyntaxKind2[SyntaxKind2["BarToken"] = 51] = "BarToken";
-    SyntaxKind2[SyntaxKind2["CaretToken"] = 52] = "CaretToken";
-    SyntaxKind2[SyntaxKind2["ExclamationToken"] = 53] = "ExclamationToken";
-    SyntaxKind2[SyntaxKind2["TildeToken"] = 54] = "TildeToken";
-    SyntaxKind2[SyntaxKind2["AmpersandAmpersandToken"] = 55] = "AmpersandAmpersandToken";
-    SyntaxKind2[SyntaxKind2["BarBarToken"] = 56] = "BarBarToken";
-    SyntaxKind2[SyntaxKind2["QuestionToken"] = 57] = "QuestionToken";
-    SyntaxKind2[SyntaxKind2["ColonToken"] = 58] = "ColonToken";
-    SyntaxKind2[SyntaxKind2["AtToken"] = 59] = "AtToken";
-    SyntaxKind2[SyntaxKind2["QuestionQuestionToken"] = 60] = "QuestionQuestionToken";
-    SyntaxKind2[SyntaxKind2["BacktickToken"] = 61] = "BacktickToken";
-    SyntaxKind2[SyntaxKind2["HashToken"] = 62] = "HashToken";
-    SyntaxKind2[SyntaxKind2["EqualsToken"] = 63] = "EqualsToken";
-    SyntaxKind2[SyntaxKind2["PlusEqualsToken"] = 64] = "PlusEqualsToken";
-    SyntaxKind2[SyntaxKind2["MinusEqualsToken"] = 65] = "MinusEqualsToken";
-    SyntaxKind2[SyntaxKind2["AsteriskEqualsToken"] = 66] = "AsteriskEqualsToken";
-    SyntaxKind2[SyntaxKind2["AsteriskAsteriskEqualsToken"] = 67] = "AsteriskAsteriskEqualsToken";
-    SyntaxKind2[SyntaxKind2["SlashEqualsToken"] = 68] = "SlashEqualsToken";
-    SyntaxKind2[SyntaxKind2["PercentEqualsToken"] = 69] = "PercentEqualsToken";
-    SyntaxKind2[SyntaxKind2["LessThanLessThanEqualsToken"] = 70] = "LessThanLessThanEqualsToken";
-    SyntaxKind2[SyntaxKind2["GreaterThanGreaterThanEqualsToken"] = 71] = "GreaterThanGreaterThanEqualsToken";
-    SyntaxKind2[SyntaxKind2["GreaterThanGreaterThanGreaterThanEqualsToken"] = 72] = "GreaterThanGreaterThanGreaterThanEqualsToken";
-    SyntaxKind2[SyntaxKind2["AmpersandEqualsToken"] = 73] = "AmpersandEqualsToken";
-    SyntaxKind2[SyntaxKind2["BarEqualsToken"] = 74] = "BarEqualsToken";
-    SyntaxKind2[SyntaxKind2["BarBarEqualsToken"] = 75] = "BarBarEqualsToken";
-    SyntaxKind2[SyntaxKind2["AmpersandAmpersandEqualsToken"] = 76] = "AmpersandAmpersandEqualsToken";
-    SyntaxKind2[SyntaxKind2["QuestionQuestionEqualsToken"] = 77] = "QuestionQuestionEqualsToken";
-    SyntaxKind2[SyntaxKind2["CaretEqualsToken"] = 78] = "CaretEqualsToken";
-    SyntaxKind2[SyntaxKind2["Identifier"] = 79] = "Identifier";
-    SyntaxKind2[SyntaxKind2["PrivateIdentifier"] = 80] = "PrivateIdentifier";
-    SyntaxKind2[SyntaxKind2["JSDocCommentTextToken"] = 81] = "JSDocCommentTextToken";
-    SyntaxKind2[SyntaxKind2["BreakKeyword"] = 82] = "BreakKeyword";
-    SyntaxKind2[SyntaxKind2["CaseKeyword"] = 83] = "CaseKeyword";
-    SyntaxKind2[SyntaxKind2["CatchKeyword"] = 84] = "CatchKeyword";
-    SyntaxKind2[SyntaxKind2["ClassKeyword"] = 85] = "ClassKeyword";
-    SyntaxKind2[SyntaxKind2["ConstKeyword"] = 86] = "ConstKeyword";
-    SyntaxKind2[SyntaxKind2["ContinueKeyword"] = 87] = "ContinueKeyword";
-    SyntaxKind2[SyntaxKind2["DebuggerKeyword"] = 88] = "DebuggerKeyword";
-    SyntaxKind2[SyntaxKind2["DefaultKeyword"] = 89] = "DefaultKeyword";
-    SyntaxKind2[SyntaxKind2["DeleteKeyword"] = 90] = "DeleteKeyword";
-    SyntaxKind2[SyntaxKind2["DoKeyword"] = 91] = "DoKeyword";
-    SyntaxKind2[SyntaxKind2["ElseKeyword"] = 92] = "ElseKeyword";
-    SyntaxKind2[SyntaxKind2["EnumKeyword"] = 93] = "EnumKeyword";
-    SyntaxKind2[SyntaxKind2["ExportKeyword"] = 94] = "ExportKeyword";
-    SyntaxKind2[SyntaxKind2["ExtendsKeyword"] = 95] = "ExtendsKeyword";
-    SyntaxKind2[SyntaxKind2["FalseKeyword"] = 96] = "FalseKeyword";
-    SyntaxKind2[SyntaxKind2["FinallyKeyword"] = 97] = "FinallyKeyword";
-    SyntaxKind2[SyntaxKind2["ForKeyword"] = 98] = "ForKeyword";
-    SyntaxKind2[SyntaxKind2["FunctionKeyword"] = 99] = "FunctionKeyword";
-    SyntaxKind2[SyntaxKind2["IfKeyword"] = 100] = "IfKeyword";
-    SyntaxKind2[SyntaxKind2["ImportKeyword"] = 101] = "ImportKeyword";
-    SyntaxKind2[SyntaxKind2["InKeyword"] = 102] = "InKeyword";
-    SyntaxKind2[SyntaxKind2["InstanceOfKeyword"] = 103] = "InstanceOfKeyword";
-    SyntaxKind2[SyntaxKind2["NewKeyword"] = 104] = "NewKeyword";
-    SyntaxKind2[SyntaxKind2["NullKeyword"] = 105] = "NullKeyword";
-    SyntaxKind2[SyntaxKind2["ReturnKeyword"] = 106] = "ReturnKeyword";
-    SyntaxKind2[SyntaxKind2["SuperKeyword"] = 107] = "SuperKeyword";
-    SyntaxKind2[SyntaxKind2["SwitchKeyword"] = 108] = "SwitchKeyword";
-    SyntaxKind2[SyntaxKind2["ThisKeyword"] = 109] = "ThisKeyword";
-    SyntaxKind2[SyntaxKind2["ThrowKeyword"] = 110] = "ThrowKeyword";
-    SyntaxKind2[SyntaxKind2["TrueKeyword"] = 111] = "TrueKeyword";
-    SyntaxKind2[SyntaxKind2["TryKeyword"] = 112] = "TryKeyword";
-    SyntaxKind2[SyntaxKind2["TypeOfKeyword"] = 113] = "TypeOfKeyword";
-    SyntaxKind2[SyntaxKind2["VarKeyword"] = 114] = "VarKeyword";
-    SyntaxKind2[SyntaxKind2["VoidKeyword"] = 115] = "VoidKeyword";
-    SyntaxKind2[SyntaxKind2["WhileKeyword"] = 116] = "WhileKeyword";
-    SyntaxKind2[SyntaxKind2["WithKeyword"] = 117] = "WithKeyword";
-    SyntaxKind2[SyntaxKind2["ImplementsKeyword"] = 118] = "ImplementsKeyword";
-    SyntaxKind2[SyntaxKind2["InterfaceKeyword"] = 119] = "InterfaceKeyword";
-    SyntaxKind2[SyntaxKind2["LetKeyword"] = 120] = "LetKeyword";
-    SyntaxKind2[SyntaxKind2["PackageKeyword"] = 121] = "PackageKeyword";
-    SyntaxKind2[SyntaxKind2["PrivateKeyword"] = 122] = "PrivateKeyword";
-    SyntaxKind2[SyntaxKind2["ProtectedKeyword"] = 123] = "ProtectedKeyword";
-    SyntaxKind2[SyntaxKind2["PublicKeyword"] = 124] = "PublicKeyword";
-    SyntaxKind2[SyntaxKind2["StaticKeyword"] = 125] = "StaticKeyword";
-    SyntaxKind2[SyntaxKind2["YieldKeyword"] = 126] = "YieldKeyword";
-    SyntaxKind2[SyntaxKind2["AbstractKeyword"] = 127] = "AbstractKeyword";
-    SyntaxKind2[SyntaxKind2["AccessorKeyword"] = 128] = "AccessorKeyword";
-    SyntaxKind2[SyntaxKind2["AsKeyword"] = 129] = "AsKeyword";
-    SyntaxKind2[SyntaxKind2["AssertsKeyword"] = 130] = "AssertsKeyword";
-    SyntaxKind2[SyntaxKind2["AssertKeyword"] = 131] = "AssertKeyword";
-    SyntaxKind2[SyntaxKind2["AnyKeyword"] = 132] = "AnyKeyword";
-    SyntaxKind2[SyntaxKind2["AsyncKeyword"] = 133] = "AsyncKeyword";
-    SyntaxKind2[SyntaxKind2["AwaitKeyword"] = 134] = "AwaitKeyword";
-    SyntaxKind2[SyntaxKind2["BooleanKeyword"] = 135] = "BooleanKeyword";
-    SyntaxKind2[SyntaxKind2["ConstructorKeyword"] = 136] = "ConstructorKeyword";
-    SyntaxKind2[SyntaxKind2["DeclareKeyword"] = 137] = "DeclareKeyword";
-    SyntaxKind2[SyntaxKind2["GetKeyword"] = 138] = "GetKeyword";
-    SyntaxKind2[SyntaxKind2["ImmediateKeyword"] = 139] = "ImmediateKeyword";
-    SyntaxKind2[SyntaxKind2["InferKeyword"] = 140] = "InferKeyword";
-    SyntaxKind2[SyntaxKind2["IntrinsicKeyword"] = 141] = "IntrinsicKeyword";
-    SyntaxKind2[SyntaxKind2["IsKeyword"] = 142] = "IsKeyword";
-    SyntaxKind2[SyntaxKind2["KeyOfKeyword"] = 143] = "KeyOfKeyword";
-    SyntaxKind2[SyntaxKind2["ModuleKeyword"] = 144] = "ModuleKeyword";
-    SyntaxKind2[SyntaxKind2["NamespaceKeyword"] = 145] = "NamespaceKeyword";
-    SyntaxKind2[SyntaxKind2["NeverKeyword"] = 146] = "NeverKeyword";
-    SyntaxKind2[SyntaxKind2["OutKeyword"] = 147] = "OutKeyword";
-    SyntaxKind2[SyntaxKind2["ReadonlyKeyword"] = 148] = "ReadonlyKeyword";
-    SyntaxKind2[SyntaxKind2["RequireKeyword"] = 149] = "RequireKeyword";
-    SyntaxKind2[SyntaxKind2["NumberKeyword"] = 150] = "NumberKeyword";
-    SyntaxKind2[SyntaxKind2["ObjectKeyword"] = 151] = "ObjectKeyword";
-    SyntaxKind2[SyntaxKind2["SatisfiesKeyword"] = 152] = "SatisfiesKeyword";
-    SyntaxKind2[SyntaxKind2["SetKeyword"] = 153] = "SetKeyword";
-    SyntaxKind2[SyntaxKind2["StringKeyword"] = 154] = "StringKeyword";
-    SyntaxKind2[SyntaxKind2["SymbolKeyword"] = 155] = "SymbolKeyword";
-    SyntaxKind2[SyntaxKind2["TypeKeyword"] = 156] = "TypeKeyword";
-    SyntaxKind2[SyntaxKind2["UndefinedKeyword"] = 157] = "UndefinedKeyword";
-    SyntaxKind2[SyntaxKind2["UniqueKeyword"] = 158] = "UniqueKeyword";
-    SyntaxKind2[SyntaxKind2["UnknownKeyword"] = 159] = "UnknownKeyword";
-    SyntaxKind2[SyntaxKind2["UsingKeyword"] = 160] = "UsingKeyword";
-    SyntaxKind2[SyntaxKind2["FromKeyword"] = 161] = "FromKeyword";
-    SyntaxKind2[SyntaxKind2["GlobalKeyword"] = 162] = "GlobalKeyword";
-    SyntaxKind2[SyntaxKind2["BigIntKeyword"] = 163] = "BigIntKeyword";
-    SyntaxKind2[SyntaxKind2["OverrideKeyword"] = 164] = "OverrideKeyword";
-    SyntaxKind2[SyntaxKind2["OfKeyword"] = 165] = "OfKeyword";
-    SyntaxKind2[SyntaxKind2["DeferKeyword"] = 166] = "DeferKeyword";
-    SyntaxKind2[SyntaxKind2["QualifiedName"] = 167] = "QualifiedName";
-    SyntaxKind2[SyntaxKind2["ComputedPropertyName"] = 168] = "ComputedPropertyName";
-    SyntaxKind2[SyntaxKind2["TypeParameter"] = 169] = "TypeParameter";
-    SyntaxKind2[SyntaxKind2["Parameter"] = 170] = "Parameter";
-    SyntaxKind2[SyntaxKind2["Decorator"] = 171] = "Decorator";
-    SyntaxKind2[SyntaxKind2["PropertySignature"] = 172] = "PropertySignature";
-    SyntaxKind2[SyntaxKind2["PropertyDeclaration"] = 173] = "PropertyDeclaration";
-    SyntaxKind2[SyntaxKind2["MethodSignature"] = 174] = "MethodSignature";
-    SyntaxKind2[SyntaxKind2["MethodDeclaration"] = 175] = "MethodDeclaration";
-    SyntaxKind2[SyntaxKind2["ClassStaticBlockDeclaration"] = 176] = "ClassStaticBlockDeclaration";
-    SyntaxKind2[SyntaxKind2["Constructor"] = 177] = "Constructor";
-    SyntaxKind2[SyntaxKind2["GetAccessor"] = 178] = "GetAccessor";
-    SyntaxKind2[SyntaxKind2["SetAccessor"] = 179] = "SetAccessor";
-    SyntaxKind2[SyntaxKind2["CallSignature"] = 180] = "CallSignature";
-    SyntaxKind2[SyntaxKind2["ConstructSignature"] = 181] = "ConstructSignature";
-    SyntaxKind2[SyntaxKind2["IndexSignature"] = 182] = "IndexSignature";
-    SyntaxKind2[SyntaxKind2["TypePredicate"] = 183] = "TypePredicate";
-    SyntaxKind2[SyntaxKind2["TypeReference"] = 184] = "TypeReference";
-    SyntaxKind2[SyntaxKind2["FunctionType"] = 185] = "FunctionType";
-    SyntaxKind2[SyntaxKind2["ConstructorType"] = 186] = "ConstructorType";
-    SyntaxKind2[SyntaxKind2["TypeQuery"] = 187] = "TypeQuery";
-    SyntaxKind2[SyntaxKind2["TypeLiteral"] = 188] = "TypeLiteral";
-    SyntaxKind2[SyntaxKind2["ArrayType"] = 189] = "ArrayType";
-    SyntaxKind2[SyntaxKind2["TupleType"] = 190] = "TupleType";
-    SyntaxKind2[SyntaxKind2["OptionalType"] = 191] = "OptionalType";
-    SyntaxKind2[SyntaxKind2["RestType"] = 192] = "RestType";
-    SyntaxKind2[SyntaxKind2["UnionType"] = 193] = "UnionType";
-    SyntaxKind2[SyntaxKind2["IntersectionType"] = 194] = "IntersectionType";
-    SyntaxKind2[SyntaxKind2["ConditionalType"] = 195] = "ConditionalType";
-    SyntaxKind2[SyntaxKind2["InferType"] = 196] = "InferType";
-    SyntaxKind2[SyntaxKind2["ParenthesizedType"] = 197] = "ParenthesizedType";
-    SyntaxKind2[SyntaxKind2["ThisType"] = 198] = "ThisType";
-    SyntaxKind2[SyntaxKind2["TypeOperator"] = 199] = "TypeOperator";
-    SyntaxKind2[SyntaxKind2["IndexedAccessType"] = 200] = "IndexedAccessType";
-    SyntaxKind2[SyntaxKind2["MappedType"] = 201] = "MappedType";
-    SyntaxKind2[SyntaxKind2["LiteralType"] = 202] = "LiteralType";
-    SyntaxKind2[SyntaxKind2["NamedTupleMember"] = 203] = "NamedTupleMember";
-    SyntaxKind2[SyntaxKind2["TemplateLiteralType"] = 204] = "TemplateLiteralType";
-    SyntaxKind2[SyntaxKind2["TemplateLiteralTypeSpan"] = 205] = "TemplateLiteralTypeSpan";
-    SyntaxKind2[SyntaxKind2["ImportType"] = 206] = "ImportType";
-    SyntaxKind2[SyntaxKind2["ObjectBindingPattern"] = 207] = "ObjectBindingPattern";
-    SyntaxKind2[SyntaxKind2["ArrayBindingPattern"] = 208] = "ArrayBindingPattern";
-    SyntaxKind2[SyntaxKind2["BindingElement"] = 209] = "BindingElement";
-    SyntaxKind2[SyntaxKind2["ArrayLiteralExpression"] = 210] = "ArrayLiteralExpression";
-    SyntaxKind2[SyntaxKind2["ObjectLiteralExpression"] = 211] = "ObjectLiteralExpression";
-    SyntaxKind2[SyntaxKind2["PropertyAccessExpression"] = 212] = "PropertyAccessExpression";
-    SyntaxKind2[SyntaxKind2["ElementAccessExpression"] = 213] = "ElementAccessExpression";
-    SyntaxKind2[SyntaxKind2["CallExpression"] = 214] = "CallExpression";
-    SyntaxKind2[SyntaxKind2["NewExpression"] = 215] = "NewExpression";
-    SyntaxKind2[SyntaxKind2["TaggedTemplateExpression"] = 216] = "TaggedTemplateExpression";
-    SyntaxKind2[SyntaxKind2["TypeAssertionExpression"] = 217] = "TypeAssertionExpression";
-    SyntaxKind2[SyntaxKind2["ParenthesizedExpression"] = 218] = "ParenthesizedExpression";
-    SyntaxKind2[SyntaxKind2["FunctionExpression"] = 219] = "FunctionExpression";
-    SyntaxKind2[SyntaxKind2["ArrowFunction"] = 220] = "ArrowFunction";
-    SyntaxKind2[SyntaxKind2["DeleteExpression"] = 221] = "DeleteExpression";
-    SyntaxKind2[SyntaxKind2["TypeOfExpression"] = 222] = "TypeOfExpression";
-    SyntaxKind2[SyntaxKind2["VoidExpression"] = 223] = "VoidExpression";
-    SyntaxKind2[SyntaxKind2["AwaitExpression"] = 224] = "AwaitExpression";
-    SyntaxKind2[SyntaxKind2["PrefixUnaryExpression"] = 225] = "PrefixUnaryExpression";
-    SyntaxKind2[SyntaxKind2["PostfixUnaryExpression"] = 226] = "PostfixUnaryExpression";
-    SyntaxKind2[SyntaxKind2["BinaryExpression"] = 227] = "BinaryExpression";
-    SyntaxKind2[SyntaxKind2["ConditionalExpression"] = 228] = "ConditionalExpression";
-    SyntaxKind2[SyntaxKind2["TemplateExpression"] = 229] = "TemplateExpression";
-    SyntaxKind2[SyntaxKind2["YieldExpression"] = 230] = "YieldExpression";
-    SyntaxKind2[SyntaxKind2["SpreadElement"] = 231] = "SpreadElement";
-    SyntaxKind2[SyntaxKind2["ClassExpression"] = 232] = "ClassExpression";
-    SyntaxKind2[SyntaxKind2["OmittedExpression"] = 233] = "OmittedExpression";
-    SyntaxKind2[SyntaxKind2["ExpressionWithTypeArguments"] = 234] = "ExpressionWithTypeArguments";
-    SyntaxKind2[SyntaxKind2["AsExpression"] = 235] = "AsExpression";
-    SyntaxKind2[SyntaxKind2["NonNullExpression"] = 236] = "NonNullExpression";
-    SyntaxKind2[SyntaxKind2["MetaProperty"] = 237] = "MetaProperty";
-    SyntaxKind2[SyntaxKind2["SyntheticExpression"] = 238] = "SyntheticExpression";
-    SyntaxKind2[SyntaxKind2["SatisfiesExpression"] = 239] = "SatisfiesExpression";
-    SyntaxKind2[SyntaxKind2["TemplateSpan"] = 240] = "TemplateSpan";
-    SyntaxKind2[SyntaxKind2["SemicolonClassElement"] = 241] = "SemicolonClassElement";
-    SyntaxKind2[SyntaxKind2["Block"] = 242] = "Block";
-    SyntaxKind2[SyntaxKind2["EmptyStatement"] = 243] = "EmptyStatement";
-    SyntaxKind2[SyntaxKind2["VariableStatement"] = 244] = "VariableStatement";
-    SyntaxKind2[SyntaxKind2["ExpressionStatement"] = 245] = "ExpressionStatement";
-    SyntaxKind2[SyntaxKind2["IfStatement"] = 246] = "IfStatement";
-    SyntaxKind2[SyntaxKind2["DoStatement"] = 247] = "DoStatement";
-    SyntaxKind2[SyntaxKind2["WhileStatement"] = 248] = "WhileStatement";
-    SyntaxKind2[SyntaxKind2["ForStatement"] = 249] = "ForStatement";
-    SyntaxKind2[SyntaxKind2["ForInStatement"] = 250] = "ForInStatement";
-    SyntaxKind2[SyntaxKind2["ForOfStatement"] = 251] = "ForOfStatement";
-    SyntaxKind2[SyntaxKind2["ContinueStatement"] = 252] = "ContinueStatement";
-    SyntaxKind2[SyntaxKind2["BreakStatement"] = 253] = "BreakStatement";
-    SyntaxKind2[SyntaxKind2["ReturnStatement"] = 254] = "ReturnStatement";
-    SyntaxKind2[SyntaxKind2["WithStatement"] = 255] = "WithStatement";
-    SyntaxKind2[SyntaxKind2["SwitchStatement"] = 256] = "SwitchStatement";
-    SyntaxKind2[SyntaxKind2["LabeledStatement"] = 257] = "LabeledStatement";
-    SyntaxKind2[SyntaxKind2["ThrowStatement"] = 258] = "ThrowStatement";
-    SyntaxKind2[SyntaxKind2["TryStatement"] = 259] = "TryStatement";
-    SyntaxKind2[SyntaxKind2["DebuggerStatement"] = 260] = "DebuggerStatement";
-    SyntaxKind2[SyntaxKind2["VariableDeclaration"] = 261] = "VariableDeclaration";
-    SyntaxKind2[SyntaxKind2["VariableDeclarationList"] = 262] = "VariableDeclarationList";
-    SyntaxKind2[SyntaxKind2["FunctionDeclaration"] = 263] = "FunctionDeclaration";
-    SyntaxKind2[SyntaxKind2["ClassDeclaration"] = 264] = "ClassDeclaration";
-    SyntaxKind2[SyntaxKind2["InterfaceDeclaration"] = 265] = "InterfaceDeclaration";
-    SyntaxKind2[SyntaxKind2["TypeAliasDeclaration"] = 266] = "TypeAliasDeclaration";
-    SyntaxKind2[SyntaxKind2["EnumDeclaration"] = 267] = "EnumDeclaration";
-    SyntaxKind2[SyntaxKind2["ModuleDeclaration"] = 268] = "ModuleDeclaration";
-    SyntaxKind2[SyntaxKind2["ModuleBlock"] = 269] = "ModuleBlock";
-    SyntaxKind2[SyntaxKind2["CaseBlock"] = 270] = "CaseBlock";
-    SyntaxKind2[SyntaxKind2["NamespaceExportDeclaration"] = 271] = "NamespaceExportDeclaration";
-    SyntaxKind2[SyntaxKind2["ImportEqualsDeclaration"] = 272] = "ImportEqualsDeclaration";
-    SyntaxKind2[SyntaxKind2["ImportDeclaration"] = 273] = "ImportDeclaration";
-    SyntaxKind2[SyntaxKind2["ImportClause"] = 274] = "ImportClause";
-    SyntaxKind2[SyntaxKind2["NamespaceImport"] = 275] = "NamespaceImport";
-    SyntaxKind2[SyntaxKind2["NamedImports"] = 276] = "NamedImports";
-    SyntaxKind2[SyntaxKind2["ImportSpecifier"] = 277] = "ImportSpecifier";
-    SyntaxKind2[SyntaxKind2["ExportAssignment"] = 278] = "ExportAssignment";
-    SyntaxKind2[SyntaxKind2["ExportDeclaration"] = 279] = "ExportDeclaration";
-    SyntaxKind2[SyntaxKind2["NamedExports"] = 280] = "NamedExports";
-    SyntaxKind2[SyntaxKind2["NamespaceExport"] = 281] = "NamespaceExport";
-    SyntaxKind2[SyntaxKind2["ExportSpecifier"] = 282] = "ExportSpecifier";
-    SyntaxKind2[SyntaxKind2["MissingDeclaration"] = 283] = "MissingDeclaration";
-    SyntaxKind2[SyntaxKind2["ExternalModuleReference"] = 284] = "ExternalModuleReference";
-    SyntaxKind2[SyntaxKind2["JsxElement"] = 285] = "JsxElement";
-    SyntaxKind2[SyntaxKind2["JsxSelfClosingElement"] = 286] = "JsxSelfClosingElement";
-    SyntaxKind2[SyntaxKind2["JsxOpeningElement"] = 287] = "JsxOpeningElement";
-    SyntaxKind2[SyntaxKind2["JsxClosingElement"] = 288] = "JsxClosingElement";
-    SyntaxKind2[SyntaxKind2["JsxFragment"] = 289] = "JsxFragment";
-    SyntaxKind2[SyntaxKind2["JsxOpeningFragment"] = 290] = "JsxOpeningFragment";
-    SyntaxKind2[SyntaxKind2["JsxClosingFragment"] = 291] = "JsxClosingFragment";
-    SyntaxKind2[SyntaxKind2["JsxAttribute"] = 292] = "JsxAttribute";
-    SyntaxKind2[SyntaxKind2["JsxAttributes"] = 293] = "JsxAttributes";
-    SyntaxKind2[SyntaxKind2["JsxSpreadAttribute"] = 294] = "JsxSpreadAttribute";
-    SyntaxKind2[SyntaxKind2["JsxExpression"] = 295] = "JsxExpression";
-    SyntaxKind2[SyntaxKind2["JsxNamespacedName"] = 296] = "JsxNamespacedName";
-    SyntaxKind2[SyntaxKind2["CaseClause"] = 297] = "CaseClause";
-    SyntaxKind2[SyntaxKind2["DefaultClause"] = 298] = "DefaultClause";
-    SyntaxKind2[SyntaxKind2["HeritageClause"] = 299] = "HeritageClause";
-    SyntaxKind2[SyntaxKind2["CatchClause"] = 300] = "CatchClause";
-    SyntaxKind2[SyntaxKind2["ImportAttributes"] = 301] = "ImportAttributes";
-    SyntaxKind2[SyntaxKind2["ImportAttribute"] = 302] = "ImportAttribute";
-    SyntaxKind2[SyntaxKind2["PropertyAssignment"] = 303] = "PropertyAssignment";
-    SyntaxKind2[SyntaxKind2["ShorthandPropertyAssignment"] = 304] = "ShorthandPropertyAssignment";
-    SyntaxKind2[SyntaxKind2["SpreadAssignment"] = 305] = "SpreadAssignment";
-    SyntaxKind2[SyntaxKind2["EnumMember"] = 306] = "EnumMember";
-    SyntaxKind2[SyntaxKind2["SourceFile"] = 307] = "SourceFile";
-    SyntaxKind2[SyntaxKind2["JSDocTypeExpression"] = 308] = "JSDocTypeExpression";
-    SyntaxKind2[SyntaxKind2["JSDocNameReference"] = 309] = "JSDocNameReference";
-    SyntaxKind2[SyntaxKind2["JSDocAllType"] = 310] = "JSDocAllType";
-    SyntaxKind2[SyntaxKind2["JSDocNullableType"] = 311] = "JSDocNullableType";
-    SyntaxKind2[SyntaxKind2["JSDocNonNullableType"] = 312] = "JSDocNonNullableType";
-    SyntaxKind2[SyntaxKind2["JSDocOptionalType"] = 313] = "JSDocOptionalType";
-    SyntaxKind2[SyntaxKind2["JSDocVariadicType"] = 314] = "JSDocVariadicType";
-    SyntaxKind2[SyntaxKind2["JSDoc"] = 315] = "JSDoc";
-    SyntaxKind2[SyntaxKind2["JSDocText"] = 316] = "JSDocText";
-    SyntaxKind2[SyntaxKind2["JSDocTypeLiteral"] = 317] = "JSDocTypeLiteral";
-    SyntaxKind2[SyntaxKind2["JSDocSignature"] = 318] = "JSDocSignature";
-    SyntaxKind2[SyntaxKind2["JSDocLink"] = 319] = "JSDocLink";
-    SyntaxKind2[SyntaxKind2["JSDocLinkCode"] = 320] = "JSDocLinkCode";
-    SyntaxKind2[SyntaxKind2["JSDocLinkPlain"] = 321] = "JSDocLinkPlain";
-    SyntaxKind2[SyntaxKind2["JSDocUnknownTag"] = 322] = "JSDocUnknownTag";
-    SyntaxKind2[SyntaxKind2["JSDocAugmentsTag"] = 323] = "JSDocAugmentsTag";
-    SyntaxKind2[SyntaxKind2["JSDocImplementsTag"] = 324] = "JSDocImplementsTag";
-    SyntaxKind2[SyntaxKind2["JSDocDeprecatedTag"] = 325] = "JSDocDeprecatedTag";
-    SyntaxKind2[SyntaxKind2["JSDocPublicTag"] = 326] = "JSDocPublicTag";
-    SyntaxKind2[SyntaxKind2["JSDocPrivateTag"] = 327] = "JSDocPrivateTag";
-    SyntaxKind2[SyntaxKind2["JSDocProtectedTag"] = 328] = "JSDocProtectedTag";
-    SyntaxKind2[SyntaxKind2["JSDocReadonlyTag"] = 329] = "JSDocReadonlyTag";
-    SyntaxKind2[SyntaxKind2["JSDocOverrideTag"] = 330] = "JSDocOverrideTag";
-    SyntaxKind2[SyntaxKind2["JSDocCallbackTag"] = 331] = "JSDocCallbackTag";
-    SyntaxKind2[SyntaxKind2["JSDocOverloadTag"] = 332] = "JSDocOverloadTag";
-    SyntaxKind2[SyntaxKind2["JSDocParameterTag"] = 333] = "JSDocParameterTag";
-    SyntaxKind2[SyntaxKind2["JSDocReturnTag"] = 334] = "JSDocReturnTag";
-    SyntaxKind2[SyntaxKind2["JSDocThisTag"] = 335] = "JSDocThisTag";
-    SyntaxKind2[SyntaxKind2["JSDocTypeTag"] = 336] = "JSDocTypeTag";
-    SyntaxKind2[SyntaxKind2["JSDocTemplateTag"] = 337] = "JSDocTemplateTag";
-    SyntaxKind2[SyntaxKind2["JSDocTypedefTag"] = 338] = "JSDocTypedefTag";
-    SyntaxKind2[SyntaxKind2["JSDocSeeTag"] = 339] = "JSDocSeeTag";
-    SyntaxKind2[SyntaxKind2["JSDocPropertyTag"] = 340] = "JSDocPropertyTag";
-    SyntaxKind2[SyntaxKind2["JSDocThrowsTag"] = 341] = "JSDocThrowsTag";
-    SyntaxKind2[SyntaxKind2["JSDocSatisfiesTag"] = 342] = "JSDocSatisfiesTag";
-    SyntaxKind2[SyntaxKind2["JSDocImportTag"] = 343] = "JSDocImportTag";
-    SyntaxKind2[SyntaxKind2["SyntaxList"] = 344] = "SyntaxList";
-    SyntaxKind2[SyntaxKind2["JSTypeAliasDeclaration"] = 345] = "JSTypeAliasDeclaration";
-    SyntaxKind2[SyntaxKind2["JSImportDeclaration"] = 346] = "JSImportDeclaration";
-    SyntaxKind2[SyntaxKind2["NotEmittedStatement"] = 347] = "NotEmittedStatement";
-    SyntaxKind2[SyntaxKind2["PartiallyEmittedExpression"] = 348] = "PartiallyEmittedExpression";
-    SyntaxKind2[SyntaxKind2["SyntheticReferenceExpression"] = 349] = "SyntheticReferenceExpression";
-    SyntaxKind2[SyntaxKind2["NotEmittedTypeElement"] = 350] = "NotEmittedTypeElement";
-    SyntaxKind2[SyntaxKind2["Count"] = 351] = "Count";
-    SyntaxKind2[SyntaxKind2["FirstAssignment"] = 63] = "FirstAssignment";
-    SyntaxKind2[SyntaxKind2["LastAssignment"] = 78] = "LastAssignment";
-    SyntaxKind2[SyntaxKind2["FirstCompoundAssignment"] = 64] = "FirstCompoundAssignment";
-    SyntaxKind2[SyntaxKind2["LastCompoundAssignment"] = 78] = "LastCompoundAssignment";
-    SyntaxKind2[SyntaxKind2["FirstReservedWord"] = 82] = "FirstReservedWord";
-    SyntaxKind2[SyntaxKind2["LastReservedWord"] = 117] = "LastReservedWord";
-    SyntaxKind2[SyntaxKind2["FirstKeyword"] = 82] = "FirstKeyword";
-    SyntaxKind2[SyntaxKind2["LastKeyword"] = 166] = "LastKeyword";
-    SyntaxKind2[SyntaxKind2["FirstFutureReservedWord"] = 118] = "FirstFutureReservedWord";
-    SyntaxKind2[SyntaxKind2["LastFutureReservedWord"] = 126] = "LastFutureReservedWord";
-    SyntaxKind2[SyntaxKind2["FirstTypeNode"] = 183] = "FirstTypeNode";
-    SyntaxKind2[SyntaxKind2["LastTypeNode"] = 206] = "LastTypeNode";
-    SyntaxKind2[SyntaxKind2["FirstPunctuation"] = 18] = "FirstPunctuation";
-    SyntaxKind2[SyntaxKind2["LastPunctuation"] = 78] = "LastPunctuation";
-    SyntaxKind2[SyntaxKind2["FirstToken"] = 0] = "FirstToken";
-    SyntaxKind2[SyntaxKind2["LastToken"] = 166] = "LastToken";
-    SyntaxKind2[SyntaxKind2["FirstLiteralToken"] = 8] = "FirstLiteralToken";
-    SyntaxKind2[SyntaxKind2["LastLiteralToken"] = 14] = "LastLiteralToken";
-    SyntaxKind2[SyntaxKind2["FirstTemplateToken"] = 14] = "FirstTemplateToken";
-    SyntaxKind2[SyntaxKind2["LastTemplateToken"] = 17] = "LastTemplateToken";
-    SyntaxKind2[SyntaxKind2["FirstBinaryOperator"] = 29] = "FirstBinaryOperator";
-    SyntaxKind2[SyntaxKind2["LastBinaryOperator"] = 78] = "LastBinaryOperator";
-    SyntaxKind2[SyntaxKind2["FirstStatement"] = 244] = "FirstStatement";
-    SyntaxKind2[SyntaxKind2["LastStatement"] = 260] = "LastStatement";
-    SyntaxKind2[SyntaxKind2["FirstNode"] = 167] = "FirstNode";
-    SyntaxKind2[SyntaxKind2["FirstJSDocNode"] = 308] = "FirstJSDocNode";
-    SyntaxKind2[SyntaxKind2["LastJSDocNode"] = 343] = "LastJSDocNode";
-    SyntaxKind2[SyntaxKind2["FirstJSDocTagNode"] = 322] = "FirstJSDocTagNode";
-    SyntaxKind2[SyntaxKind2["LastJSDocTagNode"] = 343] = "LastJSDocTagNode";
-    SyntaxKind2[SyntaxKind2["FirstContextualKeyword"] = 127] = "FirstContextualKeyword";
-    SyntaxKind2[SyntaxKind2["LastContextualKeyword"] = 166] = "LastContextualKeyword";
-    SyntaxKind2[SyntaxKind2["LastUnaryOperator"] = 54] = "LastUnaryOperator";
-    SyntaxKind2[SyntaxKind2["FirstTriviaToken"] = 2] = "FirstTriviaToken";
-    SyntaxKind2[SyntaxKind2["LastTriviaToken"] = 6] = "LastTriviaToken";
-  })(SyntaxKind || (SyntaxKind = {}));
-
-  // node_modules/typescript/dist/enums/tokenFlags.js
-  var TokenFlags;
-  (function(TokenFlags2) {
-    TokenFlags2[TokenFlags2["None"] = 0] = "None";
-    TokenFlags2[TokenFlags2["PrecedingLineBreak"] = 1] = "PrecedingLineBreak";
-    TokenFlags2[TokenFlags2["PrecedingJSDocComment"] = 2] = "PrecedingJSDocComment";
-    TokenFlags2[TokenFlags2["Unterminated"] = 4] = "Unterminated";
-    TokenFlags2[TokenFlags2["ExtendedUnicodeEscape"] = 8] = "ExtendedUnicodeEscape";
-    TokenFlags2[TokenFlags2["Scientific"] = 16] = "Scientific";
-    TokenFlags2[TokenFlags2["Octal"] = 32] = "Octal";
-    TokenFlags2[TokenFlags2["HexSpecifier"] = 64] = "HexSpecifier";
-    TokenFlags2[TokenFlags2["BinarySpecifier"] = 128] = "BinarySpecifier";
-    TokenFlags2[TokenFlags2["OctalSpecifier"] = 256] = "OctalSpecifier";
-    TokenFlags2[TokenFlags2["ContainsSeparator"] = 512] = "ContainsSeparator";
-    TokenFlags2[TokenFlags2["UnicodeEscape"] = 1024] = "UnicodeEscape";
-    TokenFlags2[TokenFlags2["ContainsInvalidEscape"] = 2048] = "ContainsInvalidEscape";
-    TokenFlags2[TokenFlags2["HexEscape"] = 4096] = "HexEscape";
-    TokenFlags2[TokenFlags2["ContainsLeadingZero"] = 8192] = "ContainsLeadingZero";
-    TokenFlags2[TokenFlags2["ContainsInvalidSeparator"] = 16384] = "ContainsInvalidSeparator";
-    TokenFlags2[TokenFlags2["PrecedingJSDocLeadingAsterisks"] = 32768] = "PrecedingJSDocLeadingAsterisks";
-    TokenFlags2[TokenFlags2["SingleQuote"] = 65536] = "SingleQuote";
-    TokenFlags2[TokenFlags2["PrecedingJSDocWithDeprecated"] = 131072] = "PrecedingJSDocWithDeprecated";
-    TokenFlags2[TokenFlags2["PrecedingJSDocWithSeeOrLink"] = 262144] = "PrecedingJSDocWithSeeOrLink";
-    TokenFlags2[TokenFlags2["BinaryOrOctalSpecifier"] = 384] = "BinaryOrOctalSpecifier";
-    TokenFlags2[TokenFlags2["WithSpecifier"] = 448] = "WithSpecifier";
-    TokenFlags2[TokenFlags2["StringLiteralFlags"] = 72716] = "StringLiteralFlags";
-    TokenFlags2[TokenFlags2["NumericLiteralFlags"] = 25584] = "NumericLiteralFlags";
-    TokenFlags2[TokenFlags2["TemplateLiteralLikeFlags"] = 7180] = "TemplateLiteralLikeFlags";
-    TokenFlags2[TokenFlags2["RegularExpressionLiteralFlags"] = 4] = "RegularExpressionLiteralFlags";
-    TokenFlags2[TokenFlags2["IsInvalid"] = 26656] = "IsInvalid";
-  })(TokenFlags || (TokenFlags = {}));
-
-  // node_modules/typescript/dist/ast/utils.js
-  function cloneSourceFileData(sourceFile) {
-    return {
-      statements: sourceFile.statements,
-      endOfFileToken: sourceFile.endOfFileToken,
-      text: sourceFile.text,
-      fileName: sourceFile.fileName,
-      path: sourceFile.path,
-      languageVariant: sourceFile.languageVariant,
-      scriptKind: sourceFile.scriptKind,
-      isDeclarationFile: sourceFile.isDeclarationFile,
-      referencedFiles: sourceFile.referencedFiles,
-      typeReferenceDirectives: sourceFile.typeReferenceDirectives,
-      libReferenceDirectives: sourceFile.libReferenceDirectives,
-      imports: sourceFile.imports,
-      moduleAugmentations: sourceFile.moduleAugmentations,
-      ambientModuleNames: sourceFile.ambientModuleNames,
-      externalModuleIndicator: sourceFile.externalModuleIndicator,
-      tokenCache: void 0
-    };
-  }
-
-  // node_modules/typescript/dist/enums/outerExpressionKinds.js
-  var OuterExpressionKinds;
-  (function(OuterExpressionKinds2) {
-    OuterExpressionKinds2[OuterExpressionKinds2["Parentheses"] = 1] = "Parentheses";
-    OuterExpressionKinds2[OuterExpressionKinds2["TypeAssertions"] = 2] = "TypeAssertions";
-    OuterExpressionKinds2[OuterExpressionKinds2["NonNullAssertions"] = 4] = "NonNullAssertions";
-    OuterExpressionKinds2[OuterExpressionKinds2["PartiallyEmittedExpressions"] = 8] = "PartiallyEmittedExpressions";
-    OuterExpressionKinds2[OuterExpressionKinds2["ExpressionsWithTypeArguments"] = 16] = "ExpressionsWithTypeArguments";
-    OuterExpressionKinds2[OuterExpressionKinds2["Satisfies"] = 32] = "Satisfies";
-    OuterExpressionKinds2[OuterExpressionKinds2["ExcludeJSDocTypeAssertion"] = 64] = "ExcludeJSDocTypeAssertion";
-    OuterExpressionKinds2[OuterExpressionKinds2["Assignments"] = 128] = "Assignments";
-    OuterExpressionKinds2[OuterExpressionKinds2["Comma"] = 256] = "Comma";
-    OuterExpressionKinds2[OuterExpressionKinds2["Assertions"] = 38] = "Assertions";
-    OuterExpressionKinds2[OuterExpressionKinds2["All"] = 63] = "All";
-    OuterExpressionKinds2[OuterExpressionKinds2["AllExceptAssertionsOrExpressionsWithTypeArguments"] = 9] = "AllExceptAssertionsOrExpressionsWithTypeArguments";
-    OuterExpressionKinds2[OuterExpressionKinds2["ExpressionTypePassthrough"] = 385] = "ExpressionTypePassthrough";
-  })(OuterExpressionKinds || (OuterExpressionKinds = {}));
-
-  // node_modules/typescript/dist/ast/is.generated.js
-  function isIdentifier(node) {
-    return node.kind === SyntaxKind.Identifier;
-  }
-  function isCaseBlock(node) {
-    return node.kind === SyntaxKind.CaseBlock;
-  }
-  function isCatchClause(node) {
-    return node.kind === SyntaxKind.CatchClause;
-  }
-  function isBlock(node) {
-    return node.kind === SyntaxKind.Block;
-  }
-  function isVariableDeclaration(node) {
-    return node.kind === SyntaxKind.VariableDeclaration;
-  }
-  function isVariableDeclarationList(node) {
-    return node.kind === SyntaxKind.VariableDeclarationList;
-  }
-  function isExpressionWithTypeArguments(node) {
-    return node.kind === SyntaxKind.ExpressionWithTypeArguments;
-  }
-  function isImportAttributes(node) {
-    return node.kind === SyntaxKind.ImportAttributes;
-  }
-  function isTemplateHead(node) {
-    return node.kind === SyntaxKind.TemplateHead;
-  }
-  function isJsxAttributes(node) {
-    return node.kind === SyntaxKind.JsxAttributes;
-  }
-  function isJsxOpeningElement(node) {
-    return node.kind === SyntaxKind.JsxOpeningElement;
-  }
-  function isJsxOpeningFragment(node) {
-    return node.kind === SyntaxKind.JsxOpeningFragment;
-  }
-  function isJsxClosingFragment(node) {
-    return node.kind === SyntaxKind.JsxClosingFragment;
-  }
-  function isJsxClosingElement(node) {
-    return node.kind === SyntaxKind.JsxClosingElement;
-  }
-  function isImportClause(node) {
-    return node.kind === SyntaxKind.ImportClause;
-  }
-  function isTypeParameterDeclaration(node) {
-    return node.kind === SyntaxKind.TypeParameter;
-  }
-  function isModuleName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.StringLiteral;
-  }
-  function isModuleExportName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.StringLiteral;
-  }
-  function isPropertyName(node) {
-    const kind = node.kind;
-    return kind === SyntaxKind.Identifier || kind === SyntaxKind.StringLiteral || kind === SyntaxKind.NoSubstitutionTemplateLiteral || kind === SyntaxKind.NumericLiteral || kind === SyntaxKind.ComputedPropertyName || kind === SyntaxKind.PrivateIdentifier || kind === SyntaxKind.BigIntLiteral;
-  }
-  function isModuleBody(node) {
-    return node.kind === SyntaxKind.ModuleBlock || node.kind === SyntaxKind.ModuleDeclaration;
-  }
-  function isJSDocFullName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.ModuleDeclaration;
-  }
-  function isModuleReference(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.QualifiedName || node.kind === SyntaxKind.ExternalModuleReference;
-  }
-  function isNamedImportBindings(node) {
-    return node.kind === SyntaxKind.NamespaceImport || node.kind === SyntaxKind.NamedImports;
-  }
-  function isNamedExportBindings(node) {
-    return node.kind === SyntaxKind.NamespaceExport || node.kind === SyntaxKind.NamedExports;
-  }
-  function isMemberName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.PrivateIdentifier;
-  }
-  function isEntityName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.QualifiedName;
-  }
-  function isBindingName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.ObjectBindingPattern || node.kind === SyntaxKind.ArrayBindingPattern;
-  }
-  function isJsxAttributeName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.JsxNamespacedName;
-  }
-  function isJsxAttributeValue(node) {
-    const kind = node.kind;
-    return kind === SyntaxKind.StringLiteral || kind === SyntaxKind.JsxExpression || kind === SyntaxKind.JsxElement || kind === SyntaxKind.JsxSelfClosingElement || kind === SyntaxKind.JsxFragment;
-  }
-  function isTemplateMiddleOrTail(node) {
-    return node.kind === SyntaxKind.TemplateMiddle || node.kind === SyntaxKind.TemplateTail;
-  }
-  function isTemplateLiteral(node) {
-    return node.kind === SyntaxKind.TemplateExpression || node.kind === SyntaxKind.NoSubstitutionTemplateLiteral;
-  }
-  function isTypePredicateParameterName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.ThisType;
-  }
-  function isImportAttributeName(node) {
-    return node.kind === SyntaxKind.Identifier || node.kind === SyntaxKind.StringLiteral;
-  }
-  function isFunctionBody(node) {
-    return node.kind === SyntaxKind.Block;
-  }
-  function isAssignmentOperator(kind) {
-    return kind === SyntaxKind.EqualsToken || isCompoundAssignmentOperator(kind);
-  }
-  function isBinaryOperator(kind) {
-    return isAssignmentOperatorOrHigher(kind) || kind === SyntaxKind.CommaToken;
-  }
-  function isExponentiationOperator(kind) {
-    return kind === SyntaxKind.AsteriskAsteriskToken;
-  }
-  function isMultiplicativeOperator(kind) {
-    return kind === SyntaxKind.AsteriskToken || kind === SyntaxKind.SlashToken || kind === SyntaxKind.PercentToken;
-  }
-  function isMultiplicativeOperatorOrHigher(kind) {
-    return isExponentiationOperator(kind) || isMultiplicativeOperator(kind);
-  }
-  function isAdditiveOperator(kind) {
-    return kind === SyntaxKind.PlusToken || kind === SyntaxKind.MinusToken;
-  }
-  function isAdditiveOperatorOrHigher(kind) {
-    return isMultiplicativeOperatorOrHigher(kind) || isAdditiveOperator(kind);
-  }
-  function isShiftOperator(kind) {
-    return kind === SyntaxKind.LessThanLessThanToken || kind === SyntaxKind.GreaterThanGreaterThanToken || kind === SyntaxKind.GreaterThanGreaterThanGreaterThanToken;
-  }
-  function isShiftOperatorOrHigher(kind) {
-    return isAdditiveOperatorOrHigher(kind) || isShiftOperator(kind);
-  }
-  function isRelationalOperator(kind) {
-    return kind === SyntaxKind.LessThanToken || kind === SyntaxKind.LessThanEqualsToken || kind === SyntaxKind.GreaterThanToken || kind === SyntaxKind.GreaterThanEqualsToken || kind === SyntaxKind.InstanceOfKeyword || kind === SyntaxKind.InKeyword;
-  }
-  function isRelationalOperatorOrHigher(kind) {
-    return isShiftOperatorOrHigher(kind) || isRelationalOperator(kind);
-  }
-  function isEqualityOperator(kind) {
-    return kind === SyntaxKind.EqualsEqualsToken || kind === SyntaxKind.EqualsEqualsEqualsToken || kind === SyntaxKind.ExclamationEqualsEqualsToken || kind === SyntaxKind.ExclamationEqualsToken;
-  }
-  function isEqualityOperatorOrHigher(kind) {
-    return isRelationalOperatorOrHigher(kind) || isEqualityOperator(kind);
-  }
-  function isBitwiseOperator(kind) {
-    return kind === SyntaxKind.AmpersandToken || kind === SyntaxKind.BarToken || kind === SyntaxKind.CaretToken;
-  }
-  function isBitwiseOperatorOrHigher(kind) {
-    return isEqualityOperatorOrHigher(kind) || isBitwiseOperator(kind);
-  }
-  function isLogicalOperator(kind) {
-    return kind === SyntaxKind.AmpersandAmpersandToken || kind === SyntaxKind.BarBarToken;
-  }
-  function isLogicalOperatorOrHigher(kind) {
-    return isBitwiseOperatorOrHigher(kind) || isLogicalOperator(kind);
-  }
-  function isCompoundAssignmentOperator(kind) {
-    return kind === SyntaxKind.PlusEqualsToken || kind === SyntaxKind.MinusEqualsToken || kind === SyntaxKind.AsteriskAsteriskEqualsToken || kind === SyntaxKind.AsteriskEqualsToken || kind === SyntaxKind.SlashEqualsToken || kind === SyntaxKind.PercentEqualsToken || kind === SyntaxKind.AmpersandEqualsToken || kind === SyntaxKind.BarEqualsToken || kind === SyntaxKind.CaretEqualsToken || kind === SyntaxKind.LessThanLessThanEqualsToken || kind === SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken || kind === SyntaxKind.GreaterThanGreaterThanEqualsToken || kind === SyntaxKind.BarBarEqualsToken || kind === SyntaxKind.AmpersandAmpersandEqualsToken || kind === SyntaxKind.QuestionQuestionEqualsToken;
-  }
-  function isAssignmentOperatorOrHigher(kind) {
-    return kind === SyntaxKind.QuestionQuestionToken || isLogicalOperatorOrHigher(kind) || isAssignmentOperator(kind);
-  }
-  function isJSDocNodeKind(kind) {
-    return kind >= SyntaxKind.FirstJSDocNode && kind <= SyntaxKind.LastJSDocNode;
-  }
-  function isEndOfFile(node) {
-    return node.kind === SyntaxKind.EndOfFile;
-  }
-  function isDotDotDotToken(node) {
-    return node.kind === SyntaxKind.DotDotDotToken;
-  }
-  function isQuestionToken(node) {
-    return node.kind === SyntaxKind.QuestionToken;
-  }
-  function isExclamationToken(node) {
-    return node.kind === SyntaxKind.ExclamationToken;
-  }
-  function isColonToken(node) {
-    return node.kind === SyntaxKind.ColonToken;
-  }
-  function isEqualsToken(node) {
-    return node.kind === SyntaxKind.EqualsToken;
-  }
-  function isAsteriskToken(node) {
-    return node.kind === SyntaxKind.AsteriskToken;
-  }
-  function isEqualsGreaterThanToken(node) {
-    return node.kind === SyntaxKind.EqualsGreaterThanToken;
-  }
-  function isQuestionDotToken(node) {
-    return node.kind === SyntaxKind.QuestionDotToken;
-  }
-  function isAssertsKeyword(node) {
-    return node.kind === SyntaxKind.AssertsKeyword;
-  }
-  function isAwaitKeyword(node) {
-    return node.kind === SyntaxKind.AwaitKeyword;
-  }
-  function isBinaryOperatorToken(node) {
-    return isBinaryOperator(node.kind);
-  }
-
-  // node_modules/typescript/dist/ast/is.js
-  function isTypeNode(node) {
-    return isTypeNodeKind(node.kind);
-  }
-  function isTypeNodeKind(kind) {
-    return kind >= SyntaxKind.FirstTypeNode && kind <= SyntaxKind.LastTypeNode || kind === SyntaxKind.AnyKeyword || kind === SyntaxKind.UnknownKeyword || kind === SyntaxKind.NumberKeyword || kind === SyntaxKind.BigIntKeyword || kind === SyntaxKind.ObjectKeyword || kind === SyntaxKind.BooleanKeyword || kind === SyntaxKind.StringKeyword || kind === SyntaxKind.SymbolKeyword || kind === SyntaxKind.VoidKeyword || kind === SyntaxKind.UndefinedKeyword || kind === SyntaxKind.NeverKeyword || kind === SyntaxKind.IntrinsicKeyword || kind === SyntaxKind.ExpressionWithTypeArguments || kind === SyntaxKind.JSDocAllType || kind === SyntaxKind.JSDocNullableType || kind === SyntaxKind.JSDocNonNullableType || kind === SyntaxKind.JSDocOptionalType || kind === SyntaxKind.JSDocVariadicType || kind === SyntaxKind.JSDocTypeExpression || kind === SyntaxKind.JSDocTypeLiteral || kind === SyntaxKind.JSDocSignature;
-  }
-  function isStatement(node) {
-    const kind = node.kind;
-    return kind === SyntaxKind.VariableStatement || kind === SyntaxKind.EmptyStatement || kind === SyntaxKind.ExpressionStatement || kind === SyntaxKind.IfStatement || kind === SyntaxKind.DoStatement || kind === SyntaxKind.WhileStatement || kind === SyntaxKind.ForStatement || kind === SyntaxKind.ForInStatement || kind === SyntaxKind.ForOfStatement || kind === SyntaxKind.ContinueStatement || kind === SyntaxKind.BreakStatement || kind === SyntaxKind.ReturnStatement || kind === SyntaxKind.WithStatement || kind === SyntaxKind.SwitchStatement || kind === SyntaxKind.LabeledStatement || kind === SyntaxKind.ThrowStatement || kind === SyntaxKind.TryStatement || kind === SyntaxKind.DebuggerStatement || kind === SyntaxKind.InterfaceDeclaration || kind === SyntaxKind.TypeAliasDeclaration || kind === SyntaxKind.EnumDeclaration || kind === SyntaxKind.ModuleDeclaration || kind === SyntaxKind.ImportDeclaration || kind === SyntaxKind.ImportEqualsDeclaration || kind === SyntaxKind.ExportDeclaration || kind === SyntaxKind.ExportAssignment || kind === SyntaxKind.NamespaceExportDeclaration || kind === SyntaxKind.FunctionDeclaration || kind === SyntaxKind.ClassDeclaration || kind === SyntaxKind.MissingDeclaration || kind === SyntaxKind.NotEmittedStatement || kind === SyntaxKind.Block;
-  }
-  function isExpression(node) {
-    const kind = node.kind;
-    return kind === SyntaxKind.ConditionalExpression || kind === SyntaxKind.YieldExpression || kind === SyntaxKind.ArrowFunction || kind === SyntaxKind.BinaryExpression || kind === SyntaxKind.SpreadElement || kind === SyntaxKind.AsExpression || kind === SyntaxKind.OmittedExpression || kind === SyntaxKind.SatisfiesExpression || kind === SyntaxKind.PrefixUnaryExpression || kind === SyntaxKind.PostfixUnaryExpression || kind === SyntaxKind.DeleteExpression || kind === SyntaxKind.TypeOfExpression || kind === SyntaxKind.VoidExpression || kind === SyntaxKind.AwaitExpression || kind === SyntaxKind.TypeAssertionExpression || kind === SyntaxKind.CallExpression || kind === SyntaxKind.NewExpression || kind === SyntaxKind.TaggedTemplateExpression || kind === SyntaxKind.NonNullExpression || kind === SyntaxKind.MetaProperty || kind === SyntaxKind.JsxExpression || kind === SyntaxKind.PropertyAccessExpression || kind === SyntaxKind.ElementAccessExpression || kind === SyntaxKind.FunctionExpression || kind === SyntaxKind.ClassExpression || kind === SyntaxKind.ParenthesizedExpression || kind === SyntaxKind.ArrayLiteralExpression || kind === SyntaxKind.ObjectLiteralExpression || kind === SyntaxKind.TemplateExpression || kind === SyntaxKind.Identifier || kind === SyntaxKind.PrivateIdentifier || kind === SyntaxKind.NumericLiteral || kind === SyntaxKind.BigIntLiteral || kind === SyntaxKind.StringLiteral || kind === SyntaxKind.RegularExpressionLiteral || kind === SyntaxKind.NoSubstitutionTemplateLiteral || kind === SyntaxKind.JsxElement || kind === SyntaxKind.JsxSelfClosingElement || kind === SyntaxKind.JsxFragment || kind === SyntaxKind.NullKeyword || kind === SyntaxKind.TrueKeyword || kind === SyntaxKind.FalseKeyword || kind === SyntaxKind.ThisKeyword || kind === SyntaxKind.SuperKeyword || kind === SyntaxKind.ImportKeyword || kind === SyntaxKind.ExpressionWithTypeArguments;
-  }
-  function isLeftHandSideExpression(node) {
-    return isLeftHandSideExpressionKind(skipPartiallyEmittedExpressions(node).kind);
-  }
-  function skipPartiallyEmittedExpressions(node) {
-    return skipOuterExpressions(node, OuterExpressionKinds.PartiallyEmittedExpressions);
-  }
-  function isLeftHandSideExpressionKind(kind) {
-    switch (kind) {
-      case SyntaxKind.PropertyAccessExpression:
-      case SyntaxKind.ElementAccessExpression:
-      case SyntaxKind.NewExpression:
-      case SyntaxKind.CallExpression:
-      case SyntaxKind.JsxElement:
-      case SyntaxKind.JsxSelfClosingElement:
-      case SyntaxKind.JsxFragment:
-      case SyntaxKind.TaggedTemplateExpression:
-      case SyntaxKind.ArrayLiteralExpression:
-      case SyntaxKind.ParenthesizedExpression:
-      case SyntaxKind.ObjectLiteralExpression:
-      case SyntaxKind.ClassExpression:
-      case SyntaxKind.FunctionExpression:
-      case SyntaxKind.Identifier:
-      case SyntaxKind.PrivateIdentifier:
-      // technically this is only an Expression if it's in a `#field in expr` BinaryExpression
-      case SyntaxKind.RegularExpressionLiteral:
-      case SyntaxKind.NumericLiteral:
-      case SyntaxKind.BigIntLiteral:
-      case SyntaxKind.StringLiteral:
-      case SyntaxKind.NoSubstitutionTemplateLiteral:
-      case SyntaxKind.TemplateExpression:
-      case SyntaxKind.FalseKeyword:
-      case SyntaxKind.NullKeyword:
-      case SyntaxKind.ThisKeyword:
-      case SyntaxKind.TrueKeyword:
-      case SyntaxKind.SuperKeyword:
-      case SyntaxKind.NonNullExpression:
-      case SyntaxKind.ExpressionWithTypeArguments:
-      case SyntaxKind.MetaProperty:
-      case SyntaxKind.ImportKeyword:
-      // technically this is only an Expression if it's in a CallExpression
-      case SyntaxKind.MissingDeclaration:
-        return true;
-      default:
-        return false;
-    }
-  }
-  function isOuterExpression(node, kinds = OuterExpressionKinds.All) {
-    switch (node.kind) {
-      case SyntaxKind.ParenthesizedExpression:
-        if (kinds & OuterExpressionKinds.ExcludeJSDocTypeAssertion && isJSDocTypeAssertion(node)) {
-          return false;
-        }
-        return (kinds & OuterExpressionKinds.Parentheses) !== 0;
-      case SyntaxKind.TypeAssertionExpression:
-      case SyntaxKind.AsExpression:
-        return (kinds & OuterExpressionKinds.TypeAssertions) !== 0;
-      case SyntaxKind.SatisfiesExpression:
-        return (kinds & (OuterExpressionKinds.ExpressionsWithTypeArguments | OuterExpressionKinds.Satisfies)) !== 0;
-      case SyntaxKind.ExpressionWithTypeArguments:
-        return (kinds & OuterExpressionKinds.ExpressionsWithTypeArguments) !== 0;
-      case SyntaxKind.NonNullExpression:
-        return (kinds & OuterExpressionKinds.NonNullAssertions) !== 0;
-      case SyntaxKind.PartiallyEmittedExpression:
-        return (kinds & OuterExpressionKinds.PartiallyEmittedExpressions) !== 0;
-    }
-    return false;
-  }
-  function skipOuterExpressions(node, kinds = OuterExpressionKinds.All) {
-    while (isOuterExpression(node, kinds)) {
-      node = node.expression;
-    }
-    return node;
-  }
-  function isJSDocTypeAssertion(node) {
-    const sourceFile = node.getSourceFile();
-    if (sourceFile.scriptKind !== ScriptKind.JS && sourceFile.scriptKind !== ScriptKind.JSX) {
-      return false;
-    }
-    const expression = node.expression;
-    if (expression.kind !== SyntaxKind.AsExpression) {
-      return false;
-    }
-    const asExpression = expression;
-    return !!asExpression.type && (asExpression.type.flags & NodeFlags.Reparsed) !== 0;
-  }
-  function isConciseBody(node) {
-    return node.kind === SyntaxKind.Block || isExpression(node);
-  }
-  function isForInitializer(node) {
-    return node.kind === SyntaxKind.VariableDeclarationList || isExpression(node);
-  }
-  function isQuestionOrExclamationToken(node) {
-    return node.kind === SyntaxKind.QuestionToken || node.kind === SyntaxKind.ExclamationToken;
-  }
-  function isReadonlyKeywordOrPlusOrMinusToken(node) {
-    return node.kind === SyntaxKind.ReadonlyKeyword || node.kind === SyntaxKind.PlusToken || node.kind === SyntaxKind.MinusToken;
-  }
-  function isQuestionOrPlusOrMinusToken(node) {
-    return node.kind === SyntaxKind.QuestionToken || node.kind === SyntaxKind.PlusToken || node.kind === SyntaxKind.MinusToken;
-  }
-  function isJsxTagNameExpression(node) {
-    const kind = node.kind;
-    return kind === SyntaxKind.ThisKeyword || kind === SyntaxKind.Identifier || kind === SyntaxKind.PropertyAccessExpression || kind === SyntaxKind.JsxNamespacedName;
-  }
-
-  // node_modules/typescript/dist/ast/visitor.generated.js
-  function visitNode(node, visitor, test) {
-    if (node === void 0)
-      return void 0;
-    const visited = visitor(node);
-    if (visited !== void 0 && test !== void 0 && !test(visited)) {
-      throw new Error("Visited node failed test assertion.");
-    }
-    return visited;
-  }
-  function visitNodes(nodes, visitor) {
-    if (nodes === void 0)
-      return void 0;
-    const updated = visitNodesArray(nodes, visitor);
-    if (updated === nodes) {
-      return nodes;
-    }
-    return createNodeArray(updated, nodes.pos, nodes.end);
-  }
-  function visitNodesArray(nodes, visitor) {
-    if (nodes === void 0)
-      return void 0;
-    let updated;
-    for (let i2 = 0; i2 < nodes.length; i2++) {
-      const node = nodes[i2];
-      const visited = visitor(node);
-      if (updated) {
-        if (visited)
-          updated.push(visited);
-      } else if (visited !== node) {
-        updated = [];
-        for (let j2 = 0; j2 < i2; j2++)
-          updated.push(nodes[j2]);
-        if (visited)
-          updated.push(visited);
-      }
-    }
-    return updated ?? nodes;
-  }
-  var visitEachChildTable = {
-    [SyntaxKind.QualifiedName]: (node, visitor) => {
-      const _left = visitNode(node.left, visitor, isEntityName);
-      const _right = visitNode(node.right, visitor, isIdentifier);
-      return updateQualifiedName(node, _left, _right);
-    },
-    [SyntaxKind.ComputedPropertyName]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateComputedPropertyName(node, _expression);
-    },
-    [SyntaxKind.Decorator]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isLeftHandSideExpression);
-      return updateDecorator(node, _expression);
-    },
-    [SyntaxKind.IfStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _thenStatement = visitNode(node.thenStatement, visitor, isStatement);
-      const _elseStatement = visitNode(node.elseStatement, visitor, isStatement);
-      return updateIfStatement(node, _expression, _thenStatement, _elseStatement);
-    },
-    [SyntaxKind.DoStatement]: (node, visitor) => {
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateDoStatement(node, _statement, _expression);
-    },
-    [SyntaxKind.WhileStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      return updateWhileStatement(node, _expression, _statement);
-    },
-    [SyntaxKind.ForStatement]: (node, visitor) => {
-      const _initializer = visitNode(node.initializer, visitor, isForInitializer);
-      const _condition = visitNode(node.condition, visitor, isExpression);
-      const _incrementor = visitNode(node.incrementor, visitor, isExpression);
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      return updateForStatement(node, _initializer, _condition, _incrementor, _statement);
-    },
-    [SyntaxKind.BreakStatement]: (node, visitor) => {
-      const _label = visitNode(node.label, visitor, isIdentifier);
-      return updateBreakStatement(node, _label);
-    },
-    [SyntaxKind.ContinueStatement]: (node, visitor) => {
-      const _label = visitNode(node.label, visitor, isIdentifier);
-      return updateContinueStatement(node, _label);
-    },
-    [SyntaxKind.ReturnStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateReturnStatement(node, _expression);
-    },
-    [SyntaxKind.WithStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      return updateWithStatement(node, _expression, _statement);
-    },
-    [SyntaxKind.SwitchStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _caseBlock = visitNode(node.caseBlock, visitor, isCaseBlock);
-      return updateSwitchStatement(node, _expression, _caseBlock);
-    },
-    [SyntaxKind.CaseBlock]: (node, visitor) => {
-      const _clauses = visitNodes(node.clauses, visitor);
-      return updateCaseBlock(node, _clauses);
-    },
-    [SyntaxKind.ThrowStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateThrowStatement(node, _expression);
-    },
-    [SyntaxKind.TryStatement]: (node, visitor) => {
-      const _tryBlock = visitNode(node.tryBlock, visitor, isBlock);
-      const _catchClause = visitNode(node.catchClause, visitor, isCatchClause);
-      const _finallyBlock = visitNode(node.finallyBlock, visitor, isBlock);
-      return updateTryStatement(node, _tryBlock, _catchClause, _finallyBlock);
-    },
-    [SyntaxKind.CatchClause]: (node, visitor) => {
-      const _variableDeclaration = visitNode(node.variableDeclaration, visitor, isVariableDeclaration);
-      const _block = visitNode(node.block, visitor, isBlock);
-      return updateCatchClause(node, _variableDeclaration, _block);
-    },
-    [SyntaxKind.LabeledStatement]: (node, visitor) => {
-      const _label = visitNode(node.label, visitor, isIdentifier);
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      return updateLabeledStatement(node, _label, _statement);
-    },
-    [SyntaxKind.ExpressionStatement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateExpressionStatement(node, _expression);
-    },
-    [SyntaxKind.Block]: (node, visitor) => {
-      const _statements = visitNodes(node.statements, visitor);
-      return updateBlock(node, _statements);
-    },
-    [SyntaxKind.VariableStatement]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _declarationList = visitNode(node.declarationList, visitor, isVariableDeclarationList);
-      return updateVariableStatement(node, _modifiers, _declarationList);
-    },
-    [SyntaxKind.VariableDeclaration]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isBindingName);
-      const _exclamationToken = visitNode(node.exclamationToken, visitor, isExclamationToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updateVariableDeclaration(node, _name, _exclamationToken, _type, _initializer);
-    },
-    [SyntaxKind.VariableDeclarationList]: (node, visitor) => {
-      const _declarations = visitNodes(node.declarations, visitor);
-      return updateVariableDeclarationList(node, _declarations);
-    },
-    [SyntaxKind.Parameter]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _dotDotDotToken = visitNode(node.dotDotDotToken, visitor, isDotDotDotToken);
-      const _name = visitNode(node.name, visitor, isBindingName);
-      const _questionToken = visitNode(node.questionToken, visitor, isQuestionToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updateParameterDeclaration(node, _modifiers, _dotDotDotToken, _name, _questionToken, _type, _initializer);
-    },
-    [SyntaxKind.BindingElement]: (node, visitor) => {
-      const _dotDotDotToken = visitNode(node.dotDotDotToken, visitor, isDotDotDotToken);
-      const _propertyName = visitNode(node.propertyName, visitor, isPropertyName);
-      const _name = visitNode(node.name, visitor, isBindingName);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updateBindingElement(node, _dotDotDotToken, _propertyName, _name, _initializer);
-    },
-    [SyntaxKind.MissingDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      return updateMissingDeclaration(node, _modifiers);
-    },
-    [SyntaxKind.FunctionDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _asteriskToken = visitNode(node.asteriskToken, visitor, isAsteriskToken);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _body = visitNode(node.body, visitor, isFunctionBody);
-      return updateFunctionDeclaration(node, _modifiers, _asteriskToken, _name, _typeParameters, _parameters, _type, _body);
-    },
-    [SyntaxKind.ClassDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _heritageClauses = visitNodes(node.heritageClauses, visitor);
-      const _members = visitNodes(node.members, visitor);
-      return updateClassDeclaration(node, _modifiers, _name, _typeParameters, _heritageClauses, _members);
-    },
-    [SyntaxKind.ClassExpression]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _heritageClauses = visitNodes(node.heritageClauses, visitor);
-      const _members = visitNodes(node.members, visitor);
-      return updateClassExpression(node, _modifiers, _name, _typeParameters, _heritageClauses, _members);
-    },
-    [SyntaxKind.HeritageClause]: (node, visitor) => {
-      const _types = visitNodes(node.types, visitor);
-      return updateHeritageClause(node, _types);
-    },
-    [SyntaxKind.InterfaceDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _heritageClauses = visitNodes(node.heritageClauses, visitor);
-      const _members = visitNodes(node.members, visitor);
-      return updateInterfaceDeclaration(node, _modifiers, _name, _typeParameters, _heritageClauses, _members);
-    },
-    [SyntaxKind.TypeAliasDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateTypeAliasDeclaration(node, _modifiers, _name, _typeParameters, _type);
-    },
-    [SyntaxKind.EnumMember]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updateEnumMember(node, _name, _initializer);
-    },
-    [SyntaxKind.EnumDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _members = visitNodes(node.members, visitor);
-      return updateEnumDeclaration(node, _modifiers, _name, _members);
-    },
-    [SyntaxKind.ModuleBlock]: (node, visitor) => {
-      const _statements = visitNodes(node.statements, visitor);
-      return updateModuleBlock(node, _statements);
-    },
-    [SyntaxKind.ImportDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _importClause = visitNode(node.importClause, visitor, isImportClause);
-      const _moduleSpecifier = visitNode(node.moduleSpecifier, visitor, isExpression);
-      const _attributes = visitNode(node.attributes, visitor, isImportAttributes);
-      return updateImportDeclaration(node, _modifiers, _importClause, _moduleSpecifier, _attributes);
-    },
-    [SyntaxKind.ExternalModuleReference]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateExternalModuleReference(node, _expression);
-    },
-    [SyntaxKind.NamespaceImport]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      return updateNamespaceImport(node, _name);
-    },
-    [SyntaxKind.NamedImports]: (node, visitor) => {
-      const _elements = visitNodes(node.elements, visitor);
-      return updateNamedImports(node, _elements);
-    },
-    [SyntaxKind.ExportAssignment]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateExportAssignment(node, _modifiers, _type, _expression);
-    },
-    [SyntaxKind.NamespaceExportDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      return updateNamespaceExportDeclaration(node, _modifiers, _name);
-    },
-    [SyntaxKind.NamespaceExport]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isModuleExportName);
-      return updateNamespaceExport(node, _name);
-    },
-    [SyntaxKind.NamedExports]: (node, visitor) => {
-      const _elements = visitNodes(node.elements, visitor);
-      return updateNamedExports(node, _elements);
-    },
-    [SyntaxKind.ExportSpecifier]: (node, visitor) => {
-      const _propertyName = visitNode(node.propertyName, visitor, isModuleExportName);
-      const _name = visitNode(node.name, visitor, isModuleExportName);
-      return updateExportSpecifier(node, _propertyName, _name);
-    },
-    [SyntaxKind.CallSignature]: (node, visitor) => {
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateCallSignatureDeclaration(node, _typeParameters, _parameters, _type);
-    },
-    [SyntaxKind.ConstructSignature]: (node, visitor) => {
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateConstructSignatureDeclaration(node, _typeParameters, _parameters, _type);
-    },
-    [SyntaxKind.Constructor]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _body = visitNode(node.body, visitor, isFunctionBody);
-      return updateConstructorDeclaration(node, _modifiers, _typeParameters, _parameters, _type, _body);
-    },
-    [SyntaxKind.GetAccessor]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _body = visitNode(node.body, visitor, isFunctionBody);
-      return updateGetAccessorDeclaration(node, _modifiers, _name, _typeParameters, _parameters, _type, _body);
-    },
-    [SyntaxKind.SetAccessor]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _body = visitNode(node.body, visitor, isFunctionBody);
-      return updateSetAccessorDeclaration(node, _modifiers, _name, _typeParameters, _parameters, _type, _body);
-    },
-    [SyntaxKind.IndexSignature]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateIndexSignatureDeclaration(node, _modifiers, _parameters, _type);
-    },
-    [SyntaxKind.MethodSignature]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _postfixToken = visitNode(node.postfixToken, visitor, isQuestionOrExclamationToken);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateMethodSignatureDeclaration(node, _modifiers, _name, _postfixToken, _typeParameters, _parameters, _type);
-    },
-    [SyntaxKind.MethodDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _asteriskToken = visitNode(node.asteriskToken, visitor, isAsteriskToken);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _postfixToken = visitNode(node.postfixToken, visitor, isQuestionOrExclamationToken);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _body = visitNode(node.body, visitor, isFunctionBody);
-      return updateMethodDeclaration(node, _modifiers, _asteriskToken, _name, _postfixToken, _typeParameters, _parameters, _type, _body);
-    },
-    [SyntaxKind.PropertySignature]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _postfixToken = visitNode(node.postfixToken, visitor, isQuestionOrExclamationToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updatePropertySignatureDeclaration(node, _modifiers, _name, _postfixToken, _type, _initializer);
-    },
-    [SyntaxKind.PropertyDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _postfixToken = visitNode(node.postfixToken, visitor, isQuestionOrExclamationToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updatePropertyDeclaration(node, _modifiers, _name, _postfixToken, _type, _initializer);
-    },
-    [SyntaxKind.ClassStaticBlockDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _body = visitNode(node.body, visitor, isBlock);
-      return updateClassStaticBlockDeclaration(node, _modifiers, _body);
-    },
-    [SyntaxKind.BinaryExpression]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _left = visitNode(node.left, visitor, isExpression);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _operatorToken = visitNode(node.operatorToken, visitor, isBinaryOperatorToken);
-      const _right = visitNode(node.right, visitor, isExpression);
-      return updateBinaryExpression(node, _modifiers, _left, _type, _operatorToken, _right);
-    },
-    [SyntaxKind.PrefixUnaryExpression]: (node, visitor) => {
-      const _operand = visitNode(node.operand, visitor, isExpression);
-      return updatePrefixUnaryExpression(node, _operand);
-    },
-    [SyntaxKind.PostfixUnaryExpression]: (node, visitor) => {
-      const _operand = visitNode(node.operand, visitor, isExpression);
-      return updatePostfixUnaryExpression(node, _operand);
-    },
-    [SyntaxKind.YieldExpression]: (node, visitor) => {
-      const _asteriskToken = visitNode(node.asteriskToken, visitor, isAsteriskToken);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateYieldExpression(node, _asteriskToken, _expression);
-    },
-    [SyntaxKind.ArrowFunction]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _equalsGreaterThanToken = visitNode(node.equalsGreaterThanToken, visitor, isEqualsGreaterThanToken);
-      const _body = visitNode(node.body, visitor, isConciseBody);
-      return updateArrowFunction(node, _modifiers, _typeParameters, _parameters, _type, _equalsGreaterThanToken, _body);
-    },
-    [SyntaxKind.FunctionExpression]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _asteriskToken = visitNode(node.asteriskToken, visitor, isAsteriskToken);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _body = visitNode(node.body, visitor, isFunctionBody);
-      return updateFunctionExpression(node, _modifiers, _asteriskToken, _name, _typeParameters, _parameters, _type, _body);
-    },
-    [SyntaxKind.AsExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateAsExpression(node, _expression, _type);
-    },
-    [SyntaxKind.SatisfiesExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateSatisfiesExpression(node, _expression, _type);
-    },
-    [SyntaxKind.ConditionalExpression]: (node, visitor) => {
-      const _condition = visitNode(node.condition, visitor, isExpression);
-      const _questionToken = visitNode(node.questionToken, visitor, isQuestionToken);
-      const _whenTrue = visitNode(node.whenTrue, visitor, isExpression);
-      const _colonToken = visitNode(node.colonToken, visitor, isColonToken);
-      const _whenFalse = visitNode(node.whenFalse, visitor, isExpression);
-      return updateConditionalExpression(node, _condition, _questionToken, _whenTrue, _colonToken, _whenFalse);
-    },
-    [SyntaxKind.PropertyAccessExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _questionDotToken = visitNode(node.questionDotToken, visitor, isQuestionDotToken);
-      const _name = visitNode(node.name, visitor, isMemberName);
-      return updatePropertyAccessExpression(node, _expression, _questionDotToken, _name);
-    },
-    [SyntaxKind.ElementAccessExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _questionDotToken = visitNode(node.questionDotToken, visitor, isQuestionDotToken);
-      const _argumentExpression = visitNode(node.argumentExpression, visitor, isExpression);
-      return updateElementAccessExpression(node, _expression, _questionDotToken, _argumentExpression);
-    },
-    [SyntaxKind.CallExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _questionDotToken = visitNode(node.questionDotToken, visitor, isQuestionDotToken);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      const _arguments = visitNodes(node.arguments, visitor);
-      return updateCallExpression(node, _expression, _questionDotToken, _typeArguments, _arguments);
-    },
-    [SyntaxKind.NewExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      const _arguments = visitNodes(node.arguments, visitor);
-      return updateNewExpression(node, _expression, _typeArguments, _arguments);
-    },
-    [SyntaxKind.MetaProperty]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      return updateMetaProperty(node, _name);
-    },
-    [SyntaxKind.NonNullExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateNonNullExpression(node, _expression);
-    },
-    [SyntaxKind.SpreadElement]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateSpreadElement(node, _expression);
-    },
-    [SyntaxKind.TemplateExpression]: (node, visitor) => {
-      const _head = visitNode(node.head, visitor, isTemplateHead);
-      const _templateSpans = visitNodes(node.templateSpans, visitor);
-      return updateTemplateExpression(node, _head, _templateSpans);
-    },
-    [SyntaxKind.TemplateSpan]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _literal = visitNode(node.literal, visitor, isTemplateMiddleOrTail);
-      return updateTemplateSpan(node, _expression, _literal);
-    },
-    [SyntaxKind.TaggedTemplateExpression]: (node, visitor) => {
-      const _tag = visitNode(node.tag, visitor, isExpression);
-      const _questionDotToken = visitNode(node.questionDotToken, visitor, isQuestionDotToken);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      const _template = visitNode(node.template, visitor, isTemplateLiteral);
-      return updateTaggedTemplateExpression(node, _tag, _questionDotToken, _typeArguments, _template);
-    },
-    [SyntaxKind.ParenthesizedExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateParenthesizedExpression(node, _expression);
-    },
-    [SyntaxKind.ArrayLiteralExpression]: (node, visitor) => {
-      const _elements = visitNodes(node.elements, visitor);
-      return updateArrayLiteralExpression(node, _elements);
-    },
-    [SyntaxKind.ObjectLiteralExpression]: (node, visitor) => {
-      const _properties = visitNodes(node.properties, visitor);
-      return updateObjectLiteralExpression(node, _properties);
-    },
-    [SyntaxKind.SpreadAssignment]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateSpreadAssignment(node, _expression);
-    },
-    [SyntaxKind.PropertyAssignment]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _postfixToken = visitNode(node.postfixToken, visitor, isQuestionOrExclamationToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _initializer = visitNode(node.initializer, visitor, isExpression);
-      return updatePropertyAssignment(node, _modifiers, _name, _postfixToken, _type, _initializer);
-    },
-    [SyntaxKind.ShorthandPropertyAssignment]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isPropertyName);
-      const _postfixToken = visitNode(node.postfixToken, visitor, isQuestionOrExclamationToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _equalsToken = visitNode(node.equalsToken, visitor, isEqualsToken);
-      const _objectAssignmentInitializer = visitNode(node.objectAssignmentInitializer, visitor, isExpression);
-      return updateShorthandPropertyAssignment(node, _modifiers, _name, _postfixToken, _type, _equalsToken, _objectAssignmentInitializer);
-    },
-    [SyntaxKind.DeleteExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateDeleteExpression(node, _expression);
-    },
-    [SyntaxKind.TypeOfExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateTypeOfExpression(node, _expression);
-    },
-    [SyntaxKind.VoidExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateVoidExpression(node, _expression);
-    },
-    [SyntaxKind.AwaitExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateAwaitExpression(node, _expression);
-    },
-    [SyntaxKind.TypeAssertionExpression]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateTypeAssertion(node, _type, _expression);
-    },
-    [SyntaxKind.UnionType]: (node, visitor) => {
-      const _types = visitNodes(node.types, visitor);
-      return updateUnionTypeNode(node, _types);
-    },
-    [SyntaxKind.IntersectionType]: (node, visitor) => {
-      const _types = visitNodes(node.types, visitor);
-      return updateIntersectionTypeNode(node, _types);
-    },
-    [SyntaxKind.ConditionalType]: (node, visitor) => {
-      const _checkType = visitNode(node.checkType, visitor, isTypeNode);
-      const _extendsType = visitNode(node.extendsType, visitor, isTypeNode);
-      const _trueType = visitNode(node.trueType, visitor, isTypeNode);
-      const _falseType = visitNode(node.falseType, visitor, isTypeNode);
-      return updateConditionalTypeNode(node, _checkType, _extendsType, _trueType, _falseType);
-    },
-    [SyntaxKind.TypeOperator]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateTypeOperatorNode(node, _type);
-    },
-    [SyntaxKind.InferType]: (node, visitor) => {
-      const _typeParameter = visitNode(node.typeParameter, visitor, isTypeParameterDeclaration);
-      return updateInferTypeNode(node, _typeParameter);
-    },
-    [SyntaxKind.ArrayType]: (node, visitor) => {
-      const _elementType = visitNode(node.elementType, visitor, isTypeNode);
-      return updateArrayTypeNode(node, _elementType);
-    },
-    [SyntaxKind.IndexedAccessType]: (node, visitor) => {
-      const _objectType = visitNode(node.objectType, visitor, isTypeNode);
-      const _indexType = visitNode(node.indexType, visitor, isTypeNode);
-      return updateIndexedAccessTypeNode(node, _objectType, _indexType);
-    },
-    [SyntaxKind.TypeReference]: (node, visitor) => {
-      const _typeName = visitNode(node.typeName, visitor, isEntityName);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      return updateTypeReferenceNode(node, _typeName, _typeArguments);
-    },
-    [SyntaxKind.ExpressionWithTypeArguments]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      return updateExpressionWithTypeArguments(node, _expression, _typeArguments);
-    },
-    [SyntaxKind.LiteralType]: (node, visitor) => {
-      const _literal = visitNode(node.literal, visitor);
-      return updateLiteralTypeNode(node, _literal);
-    },
-    [SyntaxKind.TypePredicate]: (node, visitor) => {
-      const _assertsModifier = visitNode(node.assertsModifier, visitor, isAssertsKeyword);
-      const _parameterName = visitNode(node.parameterName, visitor, isTypePredicateParameterName);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateTypePredicateNode(node, _assertsModifier, _parameterName, _type);
-    },
-    [SyntaxKind.ImportAttribute]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isImportAttributeName);
-      const _value = visitNode(node.value, visitor, isExpression);
-      return updateImportAttribute(node, _name, _value);
-    },
-    [SyntaxKind.ImportAttributes]: (node, visitor) => {
-      const _attributes = visitNodes(node.attributes, visitor);
-      return updateImportAttributes(node, _attributes);
-    },
-    [SyntaxKind.TypeQuery]: (node, visitor) => {
-      const _exprName = visitNode(node.exprName, visitor, isEntityName);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      return updateTypeQueryNode(node, _exprName, _typeArguments);
-    },
-    [SyntaxKind.MappedType]: (node, visitor) => {
-      const _readonlyToken = visitNode(node.readonlyToken, visitor, isReadonlyKeywordOrPlusOrMinusToken);
-      const _typeParameter = visitNode(node.typeParameter, visitor, isTypeParameterDeclaration);
-      const _nameType = visitNode(node.nameType, visitor, isTypeNode);
-      const _questionToken = visitNode(node.questionToken, visitor, isQuestionOrPlusOrMinusToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _members = visitNodes(node.members, visitor);
-      return updateMappedTypeNode(node, _readonlyToken, _typeParameter, _nameType, _questionToken, _type, _members);
-    },
-    [SyntaxKind.TypeLiteral]: (node, visitor) => {
-      const _members = visitNodes(node.members, visitor);
-      return updateTypeLiteralNode(node, _members);
-    },
-    [SyntaxKind.TupleType]: (node, visitor) => {
-      const _elements = visitNodes(node.elements, visitor);
-      return updateTupleTypeNode(node, _elements);
-    },
-    [SyntaxKind.NamedTupleMember]: (node, visitor) => {
-      const _dotDotDotToken = visitNode(node.dotDotDotToken, visitor, isDotDotDotToken);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _questionToken = visitNode(node.questionToken, visitor, isQuestionToken);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateNamedTupleMember(node, _dotDotDotToken, _name, _questionToken, _type);
-    },
-    [SyntaxKind.OptionalType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateOptionalTypeNode(node, _type);
-    },
-    [SyntaxKind.RestType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateRestTypeNode(node, _type);
-    },
-    [SyntaxKind.ParenthesizedType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateParenthesizedTypeNode(node, _type);
-    },
-    [SyntaxKind.FunctionType]: (node, visitor) => {
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateFunctionTypeNode(node, _typeParameters, _parameters, _type);
-    },
-    [SyntaxKind.ConstructorType]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateConstructorTypeNode(node, _modifiers, _typeParameters, _parameters, _type);
-    },
-    [SyntaxKind.TemplateLiteralType]: (node, visitor) => {
-      const _head = visitNode(node.head, visitor, isTemplateHead);
-      const _templateSpans = visitNodes(node.templateSpans, visitor);
-      return updateTemplateLiteralTypeNode(node, _head, _templateSpans);
-    },
-    [SyntaxKind.TemplateLiteralTypeSpan]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      const _literal = visitNode(node.literal, visitor, isTemplateMiddleOrTail);
-      return updateTemplateLiteralTypeSpan(node, _type, _literal);
-    },
-    [SyntaxKind.SyntheticExpression]: (node, visitor) => {
-      const _tupleNameSource = visitNode(node.tupleNameSource, visitor);
-      return updateSyntheticExpression(node, _tupleNameSource);
-    },
-    [SyntaxKind.PartiallyEmittedExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updatePartiallyEmittedExpression(node, _expression);
-    },
-    [SyntaxKind.JsxElement]: (node, visitor) => {
-      const _openingElement = visitNode(node.openingElement, visitor, isJsxOpeningElement);
-      const _children = visitNodes(node.children, visitor);
-      const _closingElement = visitNode(node.closingElement, visitor, isJsxClosingElement);
-      return updateJsxElement(node, _openingElement, _children, _closingElement);
-    },
-    [SyntaxKind.JsxAttributes]: (node, visitor) => {
-      const _properties = visitNodes(node.properties, visitor);
-      return updateJsxAttributes(node, _properties);
-    },
-    [SyntaxKind.JsxNamespacedName]: (node, visitor) => {
-      const _namespace = visitNode(node.namespace, visitor, isIdentifier);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      return updateJsxNamespacedName(node, _namespace, _name);
-    },
-    [SyntaxKind.JsxOpeningElement]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isJsxTagNameExpression);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      const _attributes = visitNode(node.attributes, visitor, isJsxAttributes);
-      return updateJsxOpeningElement(node, _tagName, _typeArguments, _attributes);
-    },
-    [SyntaxKind.JsxSelfClosingElement]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isJsxTagNameExpression);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      const _attributes = visitNode(node.attributes, visitor, isJsxAttributes);
-      return updateJsxSelfClosingElement(node, _tagName, _typeArguments, _attributes);
-    },
-    [SyntaxKind.JsxFragment]: (node, visitor) => {
-      const _openingFragment = visitNode(node.openingFragment, visitor, isJsxOpeningFragment);
-      const _children = visitNodes(node.children, visitor);
-      const _closingFragment = visitNode(node.closingFragment, visitor, isJsxClosingFragment);
-      return updateJsxFragment(node, _openingFragment, _children, _closingFragment);
-    },
-    [SyntaxKind.JsxAttribute]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isJsxAttributeName);
-      const _initializer = visitNode(node.initializer, visitor, isJsxAttributeValue);
-      return updateJsxAttribute(node, _name, _initializer);
-    },
-    [SyntaxKind.JsxSpreadAttribute]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateJsxSpreadAttribute(node, _expression);
-    },
-    [SyntaxKind.JsxClosingElement]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isJsxTagNameExpression);
-      return updateJsxClosingElement(node, _tagName);
-    },
-    [SyntaxKind.JsxExpression]: (node, visitor) => {
-      const _dotDotDotToken = visitNode(node.dotDotDotToken, visitor, isDotDotDotToken);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      return updateJsxExpression(node, _dotDotDotToken, _expression);
-    },
-    [SyntaxKind.SyntaxList]: (node, visitor) => {
-      const _children = visitNodesArray(node.children, visitor);
-      return updateSyntaxList(node, _children);
-    },
-    [SyntaxKind.JSDoc]: (node, visitor) => {
-      const _comment = visitNodes(node.comment, visitor);
-      const _tags = visitNodes(node.tags, visitor);
-      return updateJSDoc(node, _comment, _tags);
-    },
-    [SyntaxKind.JSDocTypeExpression]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateJSDocTypeExpression(node, _type);
-    },
-    [SyntaxKind.JSDocNonNullableType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateJSDocNonNullableType(node, _type);
-    },
-    [SyntaxKind.JSDocNullableType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateJSDocNullableType(node, _type);
-    },
-    [SyntaxKind.JSDocVariadicType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateJSDocVariadicType(node, _type);
-    },
-    [SyntaxKind.JSDocOptionalType]: (node, visitor) => {
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateJSDocOptionalType(node, _type);
-    },
-    [SyntaxKind.JSDocTypeTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocTypeTag(node, _tagName, _typeExpression, _comment);
-    },
-    [SyntaxKind.JSDocUnknownTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocUnknownTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocTemplateTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _constraint = visitNode(node.constraint, visitor);
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocTemplateTag(node, _tagName, _constraint, _typeParameters, _comment);
-    },
-    [SyntaxKind.JSDocReturnTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocReturnTag(node, _tagName, _typeExpression, _comment);
-    },
-    [SyntaxKind.JSDocPublicTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocPublicTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocPrivateTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocPrivateTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocProtectedTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocProtectedTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocReadonlyTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocReadonlyTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocOverrideTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocOverrideTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocDeprecatedTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocDeprecatedTag(node, _tagName, _comment);
-    },
-    [SyntaxKind.JSDocSeeTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _nameExpression = visitNode(node.nameExpression, visitor, isTypeNode);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocSeeTag(node, _tagName, _nameExpression, _comment);
-    },
-    [SyntaxKind.JSDocImplementsTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _className = visitNode(node.className, visitor, isExpressionWithTypeArguments);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocImplementsTag(node, _tagName, _className, _comment);
-    },
-    [SyntaxKind.JSDocAugmentsTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _className = visitNode(node.className, visitor, isExpressionWithTypeArguments);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocAugmentsTag(node, _tagName, _className, _comment);
-    },
-    [SyntaxKind.JSDocSatisfiesTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocSatisfiesTag(node, _tagName, _typeExpression, _comment);
-    },
-    [SyntaxKind.JSDocThrowsTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocThrowsTag(node, _tagName, _typeExpression, _comment);
-    },
-    [SyntaxKind.JSDocThisTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocThisTag(node, _tagName, _typeExpression, _comment);
-    },
-    [SyntaxKind.JSDocImportTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _importClause = visitNode(node.importClause, visitor, isImportClause);
-      const _moduleSpecifier = visitNode(node.moduleSpecifier, visitor, isExpression);
-      const _attributes = visitNode(node.attributes, visitor, isImportAttributes);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocImportTag(node, _tagName, _importClause, _moduleSpecifier, _attributes, _comment);
-    },
-    [SyntaxKind.JSDocCallbackTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-      const _name = visitNode(node.name, visitor, isJSDocFullName);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocCallbackTag(node, _tagName, _typeExpression, _name, _comment);
-    },
-    [SyntaxKind.JSDocOverloadTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocOverloadTag(node, _tagName, _typeExpression, _comment);
-    },
-    [SyntaxKind.JSDocTypedefTag]: (node, visitor) => {
-      const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-      const _typeExpression = visitNode(node.typeExpression, visitor);
-      const _name = visitNode(node.name, visitor, isJSDocFullName);
-      const _comment = visitNodes(node.comment, visitor);
-      return updateJSDocTypedefTag(node, _tagName, _typeExpression, _name, _comment);
-    },
-    [SyntaxKind.JSDocSignature]: (node, visitor) => {
-      const _typeParameters = visitNodes(node.typeParameters, visitor);
-      const _parameters = visitNodes(node.parameters, visitor);
-      const _type = visitNode(node.type, visitor, isTypeNode);
-      return updateJSDocSignature(node, _typeParameters, _parameters, _type);
-    },
-    [SyntaxKind.JSDocNameReference]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isEntityName);
-      return updateJSDocNameReference(node, _name);
-    },
-    [SyntaxKind.SourceFile]: (node, visitor) => {
-      const _statements = visitNodes(node.statements, visitor);
-      const _endOfFileToken = visitNode(node.endOfFileToken, visitor, isEndOfFile);
-      return updateSourceFile(node, _statements, _endOfFileToken);
-    },
-    [SyntaxKind.ModuleDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isModuleName);
-      const _body = visitNode(node.body, visitor, isModuleBody);
-      return updateModuleDeclaration(node, _modifiers, _name, _body);
-    },
-    [SyntaxKind.ImportEqualsDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _moduleReference = visitNode(node.moduleReference, visitor, isModuleReference);
-      return updateImportEqualsDeclaration(node, _modifiers, _name, _moduleReference);
-    },
-    [SyntaxKind.ExportDeclaration]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _exportClause = visitNode(node.exportClause, visitor, isNamedExportBindings);
-      const _moduleSpecifier = visitNode(node.moduleSpecifier, visitor, isExpression);
-      const _attributes = visitNode(node.attributes, visitor, isImportAttributes);
-      return updateExportDeclaration(node, _modifiers, _exportClause, _moduleSpecifier, _attributes);
-    },
-    [SyntaxKind.ImportType]: (node, visitor) => {
-      const _argument = visitNode(node.argument, visitor, isTypeNode);
-      const _attributes = visitNode(node.attributes, visitor, isImportAttributes);
-      const _qualifier = visitNode(node.qualifier, visitor, isEntityName);
-      const _typeArguments = visitNodes(node.typeArguments, visitor);
-      return updateImportTypeNode(node, _argument, _attributes, _qualifier, _typeArguments);
-    },
-    [SyntaxKind.ImportClause]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _namedBindings = visitNode(node.namedBindings, visitor, isNamedImportBindings);
-      return updateImportClause(node, _name, _namedBindings);
-    },
-    [SyntaxKind.ImportSpecifier]: (node, visitor) => {
-      const _propertyName = visitNode(node.propertyName, visitor, isModuleExportName);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      return updateImportSpecifier(node, _propertyName, _name);
-    },
-    [SyntaxKind.JSDocLink]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isEntityName);
-      return updateJSDocLink(node, _name);
-    },
-    [SyntaxKind.JSDocLinkPlain]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isEntityName);
-      return updateJSDocLinkPlain(node, _name);
-    },
-    [SyntaxKind.JSDocLinkCode]: (node, visitor) => {
-      const _name = visitNode(node.name, visitor, isEntityName);
-      return updateJSDocLinkCode(node, _name);
-    },
-    [SyntaxKind.TypeParameter]: (node, visitor) => {
-      const _modifiers = visitNodes(node.modifiers, visitor);
-      const _name = visitNode(node.name, visitor, isIdentifier);
-      const _constraint = visitNode(node.constraint, visitor, isTypeNode);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _defaultType = visitNode(node.defaultType, visitor, isTypeNode);
-      return updateTypeParameterDeclaration(node, _modifiers, _name, _constraint, _expression, _defaultType);
-    },
-    [SyntaxKind.SyntheticReferenceExpression]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _thisArg = visitNode(node.thisArg, visitor, isExpression);
-      return updateSyntheticReferenceExpression(node, _expression, _thisArg);
-    },
-    [SyntaxKind.JSDocTypeLiteral]: (node, visitor) => {
-      const _jsdocPropertyTags = visitNodesArray(node.jsdocPropertyTags, visitor);
-      return updateJSDocTypeLiteral(node, _jsdocPropertyTags);
-    },
-    [SyntaxKind.ForInStatement]: (node, visitor) => {
-      const _awaitModifier = visitNode(node.awaitModifier, visitor, isAwaitKeyword);
-      const _initializer = visitNode(node.initializer, visitor, isForInitializer);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      return updateForInStatement(node, _awaitModifier, _initializer, _expression, _statement);
-    },
-    [SyntaxKind.ForOfStatement]: (node, visitor) => {
-      const _awaitModifier = visitNode(node.awaitModifier, visitor, isAwaitKeyword);
-      const _initializer = visitNode(node.initializer, visitor, isForInitializer);
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _statement = visitNode(node.statement, visitor, isStatement);
-      return updateForOfStatement(node, _awaitModifier, _initializer, _expression, _statement);
-    },
-    [SyntaxKind.CaseClause]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _statements = visitNodes(node.statements, visitor);
-      return updateCaseClause(node, _expression, _statements);
-    },
-    [SyntaxKind.DefaultClause]: (node, visitor) => {
-      const _expression = visitNode(node.expression, visitor, isExpression);
-      const _statements = visitNodes(node.statements, visitor);
-      return updateDefaultClause(node, _expression, _statements);
-    },
-    [SyntaxKind.ObjectBindingPattern]: (node, visitor) => {
-      const _elements = visitNodes(node.elements, visitor);
-      return updateObjectBindingPattern(node, _elements);
-    },
-    [SyntaxKind.ArrayBindingPattern]: (node, visitor) => {
-      const _elements = visitNodes(node.elements, visitor);
-      return updateArrayBindingPattern(node, _elements);
-    },
-    [SyntaxKind.JSDocParameterTag]: visitEachChildOfJSDocParameterOrPropertyTag,
-    [SyntaxKind.JSDocPropertyTag]: visitEachChildOfJSDocParameterOrPropertyTag
-  };
-
-  // node_modules/typescript/dist/ast/visitor.js
-  function visitNodeForEachChild(cbNode, node) {
-    return node ? cbNode(node) : void 0;
-  }
-  function visitNodesForEachChild(cbNode, cbNodes, nodes) {
-    if (!nodes)
-      return void 0;
-    if (cbNodes)
-      return cbNodes(nodes);
-    for (const node of nodes) {
-      const result = cbNode(node);
-      if (result)
-        return result;
-    }
-    return void 0;
-  }
-  function forEachChildOfJSDocParameterOrPropertyTag(data, cbNode, cbNodes) {
-    return visitNodeForEachChild(cbNode, data.tagName) || (data.isNameFirst ? visitNodeForEachChild(cbNode, data.name) || visitNodeForEachChild(cbNode, data.typeExpression) : visitNodeForEachChild(cbNode, data.typeExpression) || visitNodeForEachChild(cbNode, data.name)) || visitNodesForEachChild(cbNode, cbNodes, data.comment);
-  }
-  function visitEachChildOfJSDocParameterOrPropertyTag(node, visitor) {
-    const _tagName = visitNode(node.tagName, visitor, isIdentifier);
-    const _name = visitNode(node.name, visitor, isEntityName);
-    const _typeExpression = visitNode(node.typeExpression, visitor, isTypeNode);
-    const _comment = visitNodes(node.comment, visitor);
-    return node.kind === SyntaxKind.JSDocParameterTag ? updateJSDocParameterTag(node, _tagName, _name, _typeExpression, _comment) : updateJSDocPropertyTag(node, _tagName, _name, _typeExpression, _comment);
-  }
-
-  // node_modules/typescript/dist/ast/factory.generated.js
-  var NodeObject = class {
-    kind;
-    flags = 0;
-    pos = -1;
-    end = -1;
-    parent = void 0;
-    _data;
-    constructor(kind, data) {
-      this.kind = kind;
-      this._data = data;
-    }
-    get ambientModuleNames() {
-      return this._data?.ambientModuleNames;
-    }
-    get argument() {
-      return this._data?.argument;
-    }
-    get argumentExpression() {
-      return this._data?.argumentExpression;
-    }
-    get arguments() {
-      return this._data?.arguments;
-    }
-    get assertsModifier() {
-      return this._data?.assertsModifier;
-    }
-    get asteriskToken() {
-      return this._data?.asteriskToken;
-    }
-    get attributes() {
-      return this._data?.attributes;
-    }
-    get awaitModifier() {
-      return this._data?.awaitModifier;
-    }
-    get block() {
-      return this._data?.block;
-    }
-    get body() {
-      return this._data?.body;
-    }
-    get caseBlock() {
-      return this._data?.caseBlock;
-    }
-    get catchClause() {
-      return this._data?.catchClause;
-    }
-    get checkType() {
-      return this._data?.checkType;
-    }
-    get children() {
-      return this._data?.children;
-    }
-    get className() {
-      return this._data?.className;
-    }
-    get clauses() {
-      return this._data?.clauses;
-    }
-    get closingElement() {
-      return this._data?.closingElement;
-    }
-    get closingFragment() {
-      return this._data?.closingFragment;
-    }
-    get colonToken() {
-      return this._data?.colonToken;
-    }
-    get comment() {
-      return this._data?.comment;
-    }
-    get condition() {
-      return this._data?.condition;
-    }
-    get constraint() {
-      return this._data?.constraint;
-    }
-    get containsOnlyTriviaWhiteSpaces() {
-      return this._data?.containsOnlyTriviaWhiteSpaces;
-    }
-    get declarationList() {
-      return this._data?.declarationList;
-    }
-    get declarations() {
-      return this._data?.declarations;
-    }
-    get defaultType() {
-      return this._data?.defaultType;
-    }
-    get dotDotDotToken() {
-      return this._data?.dotDotDotToken;
-    }
-    get elementType() {
-      return this._data?.elementType;
-    }
-    get elements() {
-      return this._data?.elements;
-    }
-    get elseStatement() {
-      return this._data?.elseStatement;
-    }
-    get endOfFileToken() {
-      return this._data?.endOfFileToken;
-    }
-    get equalsGreaterThanToken() {
-      return this._data?.equalsGreaterThanToken;
-    }
-    get equalsToken() {
-      return this._data?.equalsToken;
-    }
-    get exclamationToken() {
-      return this._data?.exclamationToken;
-    }
-    get exportClause() {
-      return this._data?.exportClause;
-    }
-    get exprName() {
-      return this._data?.exprName;
-    }
-    get expression() {
-      return this._data?.expression;
-    }
-    get extendsType() {
-      return this._data?.extendsType;
-    }
-    get externalModuleIndicator() {
-      return this._data?.externalModuleIndicator;
-    }
-    get falseType() {
-      return this._data?.falseType;
-    }
-    get fileName() {
-      return this._data?.fileName;
-    }
-    get finallyBlock() {
-      return this._data?.finallyBlock;
-    }
-    get head() {
-      return this._data?.head;
-    }
-    get heritageClauses() {
-      return this._data?.heritageClauses;
-    }
-    get importClause() {
-      return this._data?.importClause;
-    }
-    get imports() {
-      return this._data?.imports;
-    }
-    get incrementor() {
-      return this._data?.incrementor;
-    }
-    get indexType() {
-      return this._data?.indexType;
-    }
-    get initializer() {
-      return this._data?.initializer;
-    }
-    get isArrayType() {
-      return this._data?.isArrayType;
-    }
-    get isBracketed() {
-      return this._data?.isBracketed;
-    }
-    get isDeclarationFile() {
-      return this._data?.isDeclarationFile;
-    }
-    get isExportEquals() {
-      return this._data?.isExportEquals;
-    }
-    get isNameFirst() {
-      return this._data?.isNameFirst;
-    }
-    get isSpread() {
-      return this._data?.isSpread;
-    }
-    get isTypeOf() {
-      return this._data?.isTypeOf;
-    }
-    get isTypeOnly() {
-      return this._data?.isTypeOnly;
-    }
-    get jsdocPropertyTags() {
-      return this._data?.jsdocPropertyTags;
-    }
-    get keyword() {
-      return this._data?.keyword;
-    }
-    get keywordToken() {
-      return this._data?.keywordToken;
-    }
-    get label() {
-      return this._data?.label;
-    }
-    get languageVariant() {
-      return this._data?.languageVariant;
-    }
-    get left() {
-      return this._data?.left;
-    }
-    get libReferenceDirectives() {
-      return this._data?.libReferenceDirectives;
-    }
-    get literal() {
-      return this._data?.literal;
-    }
-    get members() {
-      return this._data?.members;
-    }
-    get modifiers() {
-      return this._data?.modifiers;
-    }
-    get moduleAugmentations() {
-      return this._data?.moduleAugmentations;
-    }
-    get moduleReference() {
-      return this._data?.moduleReference;
-    }
-    get moduleSpecifier() {
-      return this._data?.moduleSpecifier;
-    }
-    get multiLine() {
-      return this._data?.multiLine;
-    }
-    get name() {
-      return this._data?.name;
-    }
-    get nameExpression() {
-      return this._data?.nameExpression;
-    }
-    get nameType() {
-      return this._data?.nameType;
-    }
-    get namedBindings() {
-      return this._data?.namedBindings;
-    }
-    get namespace() {
-      return this._data?.namespace;
-    }
-    get objectAssignmentInitializer() {
-      return this._data?.objectAssignmentInitializer;
-    }
-    get objectType() {
-      return this._data?.objectType;
-    }
-    get openingElement() {
-      return this._data?.openingElement;
-    }
-    get openingFragment() {
-      return this._data?.openingFragment;
-    }
-    get operand() {
-      return this._data?.operand;
-    }
-    get operator() {
-      return this._data?.operator;
-    }
-    get operatorToken() {
-      return this._data?.operatorToken;
-    }
-    get parameterName() {
-      return this._data?.parameterName;
-    }
-    get parameters() {
-      return this._data?.parameters;
-    }
-    get path() {
-      return this._data?.path;
-    }
-    get phaseModifier() {
-      return this._data?.phaseModifier;
-    }
-    get postfixToken() {
-      return this._data?.postfixToken;
-    }
-    get properties() {
-      return this._data?.properties;
-    }
-    get propertyName() {
-      return this._data?.propertyName;
-    }
-    get qualifier() {
-      return this._data?.qualifier;
-    }
-    get questionDotToken() {
-      return this._data?.questionDotToken;
-    }
-    get questionToken() {
-      return this._data?.questionToken;
-    }
-    get rawText() {
-      return this._data?.rawText;
-    }
-    get readonlyToken() {
-      return this._data?.readonlyToken;
-    }
-    get referencedFiles() {
-      return this._data?.referencedFiles;
-    }
-    get right() {
-      return this._data?.right;
-    }
-    get scriptKind() {
-      return this._data?.scriptKind;
-    }
-    get statement() {
-      return this._data?.statement;
-    }
-    get statements() {
-      return this._data?.statements;
-    }
-    get tag() {
-      return this._data?.tag;
-    }
-    get tagName() {
-      return this._data?.tagName;
-    }
-    get tags() {
-      return this._data?.tags;
-    }
-    get template() {
-      return this._data?.template;
-    }
-    get templateFlags() {
-      return this._data?.templateFlags;
-    }
-    get templateSpans() {
-      return this._data?.templateSpans;
-    }
-    get text() {
-      return this._data?.text;
-    }
-    get thenStatement() {
-      return this._data?.thenStatement;
-    }
-    get thisArg() {
-      return this._data?.thisArg;
-    }
-    get token() {
-      return this._data?.token;
-    }
-    get tokenCache() {
-      return this._data?.tokenCache;
-    }
-    get tokenFlags() {
-      return this._data?.tokenFlags;
-    }
-    get trueType() {
-      return this._data?.trueType;
-    }
-    get tryBlock() {
-      return this._data?.tryBlock;
-    }
-    get tupleNameSource() {
-      return this._data?.tupleNameSource;
-    }
-    get type() {
-      return this._data?.type;
-    }
-    get typeArguments() {
-      return this._data?.typeArguments;
-    }
-    get typeExpression() {
-      return this._data?.typeExpression;
-    }
-    get typeName() {
-      return this._data?.typeName;
-    }
-    get typeParameter() {
-      return this._data?.typeParameter;
-    }
-    get typeParameters() {
-      return this._data?.typeParameters;
-    }
-    get typeReferenceDirectives() {
-      return this._data?.typeReferenceDirectives;
-    }
-    get types() {
-      return this._data?.types;
-    }
-    get value() {
-      return this._data?.value;
-    }
-    get variableDeclaration() {
-      return this._data?.variableDeclaration;
-    }
-    get whenFalse() {
-      return this._data?.whenFalse;
-    }
-    get whenTrue() {
-      return this._data?.whenTrue;
-    }
-    forEachChild(visitor, visitArray) {
-      const fn = forEachChildTable[this.kind];
-      return fn ? fn(this._data, visitor, visitArray) : void 0;
-    }
-    getSourceFile() {
-      let node = this;
-      while (node.parent)
-        node = node.parent;
-      return node;
-    }
-    getStart(sourceFile, includeJsDocComment) {
-      return getTokenPosOfNode(this, sourceFile ?? this.getSourceFile(), includeJsDocComment);
-    }
-    getFullStart() {
-      return this.pos;
-    }
-    getEnd() {
-      return this.end;
-    }
-    getWidth(sourceFile) {
-      return this.getEnd() - this.getStart(sourceFile);
-    }
-    getFullWidth() {
-      return this.end - this.pos;
-    }
-    getLeadingTriviaWidth(sourceFile) {
-      return this.getStart(sourceFile) - this.pos;
-    }
-    getFullText(sourceFile) {
-      return (sourceFile ?? this.getSourceFile()).text.substring(this.pos, this.end);
-    }
-    getText(sourceFile) {
-      sourceFile ??= this.getSourceFile();
-      return sourceFile.text.substring(this.getStart(sourceFile), this.end);
-    }
-  };
-  function isNodeArray(array) {
-    return "pos" in array && "end" in array;
-  }
-  function createNodeArray(elements, pos = -1, end = -1) {
-    if (isNodeArray(elements))
-      return elements;
-    const arr = elements.slice();
-    arr.pos = pos;
-    arr.end = end;
-    return arr;
-  }
-  var forEachChildTable = {
-    [SyntaxKind.QualifiedName]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.left) || visitNode2(cbNode, data.right),
-    [SyntaxKind.ComputedPropertyName]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.Decorator]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.IfStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.thenStatement) || visitNode2(cbNode, data.elseStatement),
-    [SyntaxKind.DoStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.statement) || visitNode2(cbNode, data.expression),
-    [SyntaxKind.WhileStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.statement),
-    [SyntaxKind.ForStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.initializer) || visitNode2(cbNode, data.condition) || visitNode2(cbNode, data.incrementor) || visitNode2(cbNode, data.statement),
-    [SyntaxKind.BreakStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.label),
-    [SyntaxKind.ContinueStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.label),
-    [SyntaxKind.ReturnStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.WithStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.statement),
-    [SyntaxKind.SwitchStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.caseBlock),
-    [SyntaxKind.CaseBlock]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.clauses),
-    [SyntaxKind.ThrowStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.TryStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tryBlock) || visitNode2(cbNode, data.catchClause) || visitNode2(cbNode, data.finallyBlock),
-    [SyntaxKind.CatchClause]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.variableDeclaration) || visitNode2(cbNode, data.block),
-    [SyntaxKind.LabeledStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.label) || visitNode2(cbNode, data.statement),
-    [SyntaxKind.ExpressionStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.Block]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.statements),
-    [SyntaxKind.VariableStatement]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.declarationList),
-    [SyntaxKind.VariableDeclaration]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name) || visitNode2(cbNode, data.exclamationToken) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.VariableDeclarationList]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.declarations),
-    [SyntaxKind.Parameter]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.dotDotDotToken) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.questionToken) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.BindingElement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.dotDotDotToken) || visitNode2(cbNode, data.propertyName) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.MissingDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers),
-    [SyntaxKind.FunctionDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.asteriskToken) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.body),
-    [SyntaxKind.ClassDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.heritageClauses) || visitNodes2(cbNode, cbNodes, data.members),
-    [SyntaxKind.ClassExpression]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.heritageClauses) || visitNodes2(cbNode, cbNodes, data.members),
-    [SyntaxKind.HeritageClause]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.types),
-    [SyntaxKind.InterfaceDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.heritageClauses) || visitNodes2(cbNode, cbNodes, data.members),
-    [SyntaxKind.TypeAliasDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.JSTypeAliasDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.EnumMember]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.EnumDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.members),
-    [SyntaxKind.ModuleBlock]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.statements),
-    [SyntaxKind.ImportDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.importClause) || visitNode2(cbNode, data.moduleSpecifier) || visitNode2(cbNode, data.attributes),
-    [SyntaxKind.JSImportDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.importClause) || visitNode2(cbNode, data.moduleSpecifier) || visitNode2(cbNode, data.attributes),
-    [SyntaxKind.ExternalModuleReference]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.NamespaceImport]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.NamedImports]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.elements),
-    [SyntaxKind.ExportAssignment]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.expression),
-    [SyntaxKind.NamespaceExportDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name),
-    [SyntaxKind.NamespaceExport]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.NamedExports]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.elements),
-    [SyntaxKind.ExportSpecifier]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.propertyName) || visitNode2(cbNode, data.name),
-    [SyntaxKind.CallSignature]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.ConstructSignature]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.Constructor]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.body),
-    [SyntaxKind.GetAccessor]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.body),
-    [SyntaxKind.SetAccessor]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.body),
-    [SyntaxKind.IndexSignature]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.MethodSignature]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.postfixToken) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.MethodDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.asteriskToken) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.postfixToken) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.body),
-    [SyntaxKind.PropertySignature]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.postfixToken) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.PropertyDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.postfixToken) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.ClassStaticBlockDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.body),
-    [SyntaxKind.BinaryExpression]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.left) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.operatorToken) || visitNode2(cbNode, data.right),
-    [SyntaxKind.PrefixUnaryExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.operand),
-    [SyntaxKind.PostfixUnaryExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.operand),
-    [SyntaxKind.YieldExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.asteriskToken) || visitNode2(cbNode, data.expression),
-    [SyntaxKind.ArrowFunction]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.equalsGreaterThanToken) || visitNode2(cbNode, data.body),
-    [SyntaxKind.FunctionExpression]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.asteriskToken) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.body),
-    [SyntaxKind.AsExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.type),
-    [SyntaxKind.SatisfiesExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.type),
-    [SyntaxKind.ConditionalExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.condition) || visitNode2(cbNode, data.questionToken) || visitNode2(cbNode, data.whenTrue) || visitNode2(cbNode, data.colonToken) || visitNode2(cbNode, data.whenFalse),
-    [SyntaxKind.PropertyAccessExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.questionDotToken) || visitNode2(cbNode, data.name),
-    [SyntaxKind.ElementAccessExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.questionDotToken) || visitNode2(cbNode, data.argumentExpression),
-    [SyntaxKind.CallExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.questionDotToken) || visitNodes2(cbNode, cbNodes, data.typeArguments) || visitNodes2(cbNode, cbNodes, data.arguments),
-    [SyntaxKind.NewExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNodes2(cbNode, cbNodes, data.typeArguments) || visitNodes2(cbNode, cbNodes, data.arguments),
-    [SyntaxKind.MetaProperty]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.NonNullExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.SpreadElement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.TemplateExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.head) || visitNodes2(cbNode, cbNodes, data.templateSpans),
-    [SyntaxKind.TemplateSpan]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.literal),
-    [SyntaxKind.TaggedTemplateExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tag) || visitNode2(cbNode, data.questionDotToken) || visitNodes2(cbNode, cbNodes, data.typeArguments) || visitNode2(cbNode, data.template),
-    [SyntaxKind.ParenthesizedExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.ArrayLiteralExpression]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.elements),
-    [SyntaxKind.ObjectLiteralExpression]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.properties),
-    [SyntaxKind.SpreadAssignment]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.PropertyAssignment]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.postfixToken) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.ShorthandPropertyAssignment]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.postfixToken) || visitNode2(cbNode, data.type) || visitNode2(cbNode, data.equalsToken) || visitNode2(cbNode, data.objectAssignmentInitializer),
-    [SyntaxKind.DeleteExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.TypeOfExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.VoidExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.AwaitExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.TypeAssertionExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type) || visitNode2(cbNode, data.expression),
-    [SyntaxKind.UnionType]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.types),
-    [SyntaxKind.IntersectionType]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.types),
-    [SyntaxKind.ConditionalType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.checkType) || visitNode2(cbNode, data.extendsType) || visitNode2(cbNode, data.trueType) || visitNode2(cbNode, data.falseType),
-    [SyntaxKind.TypeOperator]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.InferType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.typeParameter),
-    [SyntaxKind.ArrayType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.elementType),
-    [SyntaxKind.IndexedAccessType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.objectType) || visitNode2(cbNode, data.indexType),
-    [SyntaxKind.TypeReference]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.typeName) || visitNodes2(cbNode, cbNodes, data.typeArguments),
-    [SyntaxKind.ExpressionWithTypeArguments]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNodes2(cbNode, cbNodes, data.typeArguments),
-    [SyntaxKind.LiteralType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.literal),
-    [SyntaxKind.TypePredicate]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.assertsModifier) || visitNode2(cbNode, data.parameterName) || visitNode2(cbNode, data.type),
-    [SyntaxKind.ImportAttribute]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name) || visitNode2(cbNode, data.value),
-    [SyntaxKind.ImportAttributes]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.attributes),
-    [SyntaxKind.TypeQuery]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.exprName) || visitNodes2(cbNode, cbNodes, data.typeArguments),
-    [SyntaxKind.MappedType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.readonlyToken) || visitNode2(cbNode, data.typeParameter) || visitNode2(cbNode, data.nameType) || visitNode2(cbNode, data.questionToken) || visitNode2(cbNode, data.type) || visitNodes2(cbNode, cbNodes, data.members),
-    [SyntaxKind.TypeLiteral]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.members),
-    [SyntaxKind.TupleType]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.elements),
-    [SyntaxKind.NamedTupleMember]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.dotDotDotToken) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.questionToken) || visitNode2(cbNode, data.type),
-    [SyntaxKind.OptionalType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.RestType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.ParenthesizedType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.FunctionType]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.ConstructorType]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.TemplateLiteralType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.head) || visitNodes2(cbNode, cbNodes, data.templateSpans),
-    [SyntaxKind.TemplateLiteralTypeSpan]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type) || visitNode2(cbNode, data.literal),
-    [SyntaxKind.SyntheticExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tupleNameSource),
-    [SyntaxKind.PartiallyEmittedExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.JsxElement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.openingElement) || visitNodes2(cbNode, cbNodes, data.children) || visitNode2(cbNode, data.closingElement),
-    [SyntaxKind.JsxAttributes]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.properties),
-    [SyntaxKind.JsxNamespacedName]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.namespace) || visitNode2(cbNode, data.name),
-    [SyntaxKind.JsxOpeningElement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.typeArguments) || visitNode2(cbNode, data.attributes),
-    [SyntaxKind.JsxSelfClosingElement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.typeArguments) || visitNode2(cbNode, data.attributes),
-    [SyntaxKind.JsxFragment]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.openingFragment) || visitNodes2(cbNode, cbNodes, data.children) || visitNode2(cbNode, data.closingFragment),
-    [SyntaxKind.JsxAttribute]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name) || visitNode2(cbNode, data.initializer),
-    [SyntaxKind.JsxSpreadAttribute]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression),
-    [SyntaxKind.JsxClosingElement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName),
-    [SyntaxKind.JsxExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.dotDotDotToken) || visitNode2(cbNode, data.expression),
-    [SyntaxKind.SyntaxList]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.children),
-    [SyntaxKind.JSDoc]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.comment) || visitNodes2(cbNode, cbNodes, data.tags),
-    [SyntaxKind.JSDocTypeExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.JSDocNonNullableType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.JSDocNullableType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.JSDocVariadicType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.JSDocOptionalType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.type),
-    [SyntaxKind.JSDocTypeTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocUnknownTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocTemplateTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.constraint) || visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocReturnTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocPublicTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocPrivateTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocProtectedTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocReadonlyTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocOverrideTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocDeprecatedTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocSeeTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.nameExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocImplementsTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.className) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocAugmentsTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.className) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocSatisfiesTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocThrowsTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocThisTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocImportTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.importClause) || visitNode2(cbNode, data.moduleSpecifier) || visitNode2(cbNode, data.attributes) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocCallbackTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocOverloadTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocTypedefTag]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.tagName) || visitNode2(cbNode, data.typeExpression) || visitNode2(cbNode, data.name) || visitNodes2(cbNode, cbNodes, data.comment),
-    [SyntaxKind.JSDocSignature]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.typeParameters) || visitNodes2(cbNode, cbNodes, data.parameters) || visitNode2(cbNode, data.type),
-    [SyntaxKind.JSDocNameReference]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.ModuleDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.body),
-    [SyntaxKind.ImportEqualsDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.moduleReference),
-    [SyntaxKind.ExportDeclaration]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.exportClause) || visitNode2(cbNode, data.moduleSpecifier) || visitNode2(cbNode, data.attributes),
-    [SyntaxKind.ImportType]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.argument) || visitNode2(cbNode, data.attributes) || visitNode2(cbNode, data.qualifier) || visitNodes2(cbNode, cbNodes, data.typeArguments),
-    [SyntaxKind.ImportClause]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name) || visitNode2(cbNode, data.namedBindings),
-    [SyntaxKind.ImportSpecifier]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.propertyName) || visitNode2(cbNode, data.name),
-    [SyntaxKind.JSDocLink]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.JSDocLinkPlain]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.JSDocLinkCode]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.name),
-    [SyntaxKind.TypeParameter]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.modifiers) || visitNode2(cbNode, data.name) || visitNode2(cbNode, data.constraint) || visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.defaultType),
-    [SyntaxKind.SyntheticReferenceExpression]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.thisArg),
-    [SyntaxKind.JSDocTypeLiteral]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.jsdocPropertyTags),
-    [SyntaxKind.ForInStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.awaitModifier) || visitNode2(cbNode, data.initializer) || visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.statement),
-    [SyntaxKind.ForOfStatement]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.awaitModifier) || visitNode2(cbNode, data.initializer) || visitNode2(cbNode, data.expression) || visitNode2(cbNode, data.statement),
-    [SyntaxKind.CaseClause]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNodes2(cbNode, cbNodes, data.statements),
-    [SyntaxKind.DefaultClause]: (data, cbNode, cbNodes) => visitNode2(cbNode, data.expression) || visitNodes2(cbNode, cbNodes, data.statements),
-    [SyntaxKind.ObjectBindingPattern]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.elements),
-    [SyntaxKind.ArrayBindingPattern]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.elements),
-    [SyntaxKind.JSDocParameterTag]: forEachChildOfJSDocParameterOrPropertyTag,
-    [SyntaxKind.JSDocPropertyTag]: forEachChildOfJSDocParameterOrPropertyTag,
-    [SyntaxKind.SourceFile]: (data, cbNode, cbNodes) => visitNodes2(cbNode, cbNodes, data.statements) || visitNode2(cbNode, data.endOfFileToken)
-  };
-  function visitNode2(cbNode, node) {
-    return node ? cbNode(node) : void 0;
-  }
-  function visitNodes2(cbNode, cbNodes, nodes) {
-    if (!nodes)
-      return void 0;
-    if (cbNodes)
-      return cbNodes(nodes);
-    for (const node of nodes) {
-      const result = cbNode(node);
-      if (result)
-        return result;
-    }
-    return void 0;
-  }
-  function createQualifiedName(left, right) {
-    return new NodeObject(SyntaxKind.QualifiedName, {
-      left,
-      right
-    });
-  }
-  function createComputedPropertyName(expression) {
-    return new NodeObject(SyntaxKind.ComputedPropertyName, {
-      expression
-    });
-  }
-  function createDecorator(expression) {
-    return new NodeObject(SyntaxKind.Decorator, {
-      expression
-    });
-  }
-  function createIfStatement(expression, thenStatement, elseStatement) {
-    return new NodeObject(SyntaxKind.IfStatement, {
-      expression,
-      thenStatement,
-      elseStatement
-    });
-  }
-  function createDoStatement(statement, expression) {
-    return new NodeObject(SyntaxKind.DoStatement, {
-      statement,
-      expression
-    });
-  }
-  function createWhileStatement(expression, statement) {
-    return new NodeObject(SyntaxKind.WhileStatement, {
-      expression,
-      statement
-    });
-  }
-  function createForStatement(initializer, condition, incrementor, statement) {
-    return new NodeObject(SyntaxKind.ForStatement, {
-      initializer,
-      condition,
-      incrementor,
-      statement
-    });
-  }
-  function createBreakStatement(label) {
-    return new NodeObject(SyntaxKind.BreakStatement, {
-      label
-    });
-  }
-  function createContinueStatement(label) {
-    return new NodeObject(SyntaxKind.ContinueStatement, {
-      label
-    });
-  }
-  function createReturnStatement(expression) {
-    return new NodeObject(SyntaxKind.ReturnStatement, {
-      expression
-    });
-  }
-  function createWithStatement(expression, statement) {
-    return new NodeObject(SyntaxKind.WithStatement, {
-      expression,
-      statement
-    });
-  }
-  function createSwitchStatement(expression, caseBlock) {
-    return new NodeObject(SyntaxKind.SwitchStatement, {
-      expression,
-      caseBlock
-    });
-  }
-  function createCaseBlock(clauses) {
-    return new NodeObject(SyntaxKind.CaseBlock, {
-      clauses: createNodeArray(clauses)
-    });
-  }
-  function createThrowStatement(expression) {
-    return new NodeObject(SyntaxKind.ThrowStatement, {
-      expression
-    });
-  }
-  function createTryStatement(tryBlock, catchClause, finallyBlock) {
-    return new NodeObject(SyntaxKind.TryStatement, {
-      tryBlock,
-      catchClause,
-      finallyBlock
-    });
-  }
-  function createCatchClause(variableDeclaration, block) {
-    return new NodeObject(SyntaxKind.CatchClause, {
-      variableDeclaration,
-      block
-    });
-  }
-  function createLabeledStatement(label, statement) {
-    return new NodeObject(SyntaxKind.LabeledStatement, {
-      label,
-      statement
-    });
-  }
-  function createExpressionStatement(expression) {
-    return new NodeObject(SyntaxKind.ExpressionStatement, {
-      expression
-    });
-  }
-  function createBlock(statements, multiLine) {
-    return new NodeObject(SyntaxKind.Block, {
-      statements: createNodeArray(statements),
-      multiLine
-    });
-  }
-  function createVariableStatement(modifiers, declarationList) {
-    return new NodeObject(SyntaxKind.VariableStatement, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      declarationList
-    });
-  }
-  function createVariableDeclaration(name, exclamationToken, type, initializer) {
-    return new NodeObject(SyntaxKind.VariableDeclaration, {
-      name,
-      exclamationToken,
-      type,
-      initializer
-    });
-  }
-  function createVariableDeclarationList(declarations, flags) {
-    const node = new NodeObject(SyntaxKind.VariableDeclarationList, {
-      declarations: createNodeArray(declarations)
-    });
-    node.flags = flags;
-    return node;
-  }
-  function createParameterDeclaration(modifiers, dotDotDotToken, name, questionToken, type, initializer) {
-    return new NodeObject(SyntaxKind.Parameter, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      dotDotDotToken,
-      name,
-      questionToken,
-      type,
-      initializer
-    });
-  }
-  function createBindingElement(dotDotDotToken, propertyName, name, initializer) {
-    return new NodeObject(SyntaxKind.BindingElement, {
-      dotDotDotToken,
-      propertyName,
-      name,
-      initializer
-    });
-  }
-  function createMissingDeclaration(modifiers) {
-    return new NodeObject(SyntaxKind.MissingDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0
-    });
-  }
-  function createFunctionDeclaration(modifiers, asteriskToken, name, typeParameters, parameters, type, body) {
-    return new NodeObject(SyntaxKind.FunctionDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      asteriskToken,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      body
-    });
-  }
-  function createClassDeclaration(modifiers, name, typeParameters, heritageClauses, members) {
-    return new NodeObject(SyntaxKind.ClassDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      heritageClauses: heritageClauses ? createNodeArray(heritageClauses) : void 0,
-      members: createNodeArray(members)
-    });
-  }
-  function createClassExpression(modifiers, name, typeParameters, heritageClauses, members) {
-    return new NodeObject(SyntaxKind.ClassExpression, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      heritageClauses: heritageClauses ? createNodeArray(heritageClauses) : void 0,
-      members: createNodeArray(members)
-    });
-  }
-  function createHeritageClause(token, types) {
-    return new NodeObject(SyntaxKind.HeritageClause, {
-      token,
-      types: createNodeArray(types)
-    });
-  }
-  function createInterfaceDeclaration(modifiers, name, typeParameters, heritageClauses, members) {
-    return new NodeObject(SyntaxKind.InterfaceDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      heritageClauses: heritageClauses ? createNodeArray(heritageClauses) : void 0,
-      members: createNodeArray(members)
-    });
-  }
-  function createTypeAliasDeclaration(modifiers, name, typeParameters, type) {
-    return new NodeObject(SyntaxKind.TypeAliasDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      type
-    });
-  }
-  function createEnumMember(name, initializer) {
-    return new NodeObject(SyntaxKind.EnumMember, {
-      name,
-      initializer
-    });
-  }
-  function createEnumDeclaration(modifiers, name, members) {
-    return new NodeObject(SyntaxKind.EnumDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      members: createNodeArray(members)
-    });
-  }
-  function createModuleBlock(statements) {
-    return new NodeObject(SyntaxKind.ModuleBlock, {
-      statements: createNodeArray(statements)
-    });
-  }
-  function createImportDeclaration(modifiers, importClause, moduleSpecifier, attributes) {
-    return new NodeObject(SyntaxKind.ImportDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      importClause,
-      moduleSpecifier,
-      attributes
-    });
-  }
-  function createExternalModuleReference(expression) {
-    return new NodeObject(SyntaxKind.ExternalModuleReference, {
-      expression
-    });
-  }
-  function createNamespaceImport(name) {
-    return new NodeObject(SyntaxKind.NamespaceImport, {
-      name
-    });
-  }
-  function createNamedImports(elements) {
-    return new NodeObject(SyntaxKind.NamedImports, {
-      elements: createNodeArray(elements)
-    });
-  }
-  function createExportAssignment(modifiers, isExportEquals = false, type, expression) {
-    return new NodeObject(SyntaxKind.ExportAssignment, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      isExportEquals,
-      type,
-      expression
-    });
-  }
-  function createNamespaceExportDeclaration(modifiers, name) {
-    return new NodeObject(SyntaxKind.NamespaceExportDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name
-    });
-  }
-  function createNamespaceExport(name) {
-    return new NodeObject(SyntaxKind.NamespaceExport, {
-      name
-    });
-  }
-  function createNamedExports(elements) {
-    return new NodeObject(SyntaxKind.NamedExports, {
-      elements: createNodeArray(elements)
-    });
-  }
-  function createExportSpecifier(isTypeOnly = false, propertyName, name) {
-    return new NodeObject(SyntaxKind.ExportSpecifier, {
-      isTypeOnly,
-      propertyName,
-      name
-    });
-  }
-  function createCallSignatureDeclaration(typeParameters, parameters, type) {
-    return new NodeObject(SyntaxKind.CallSignature, {
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createConstructSignatureDeclaration(typeParameters, parameters, type) {
-    return new NodeObject(SyntaxKind.ConstructSignature, {
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createConstructorDeclaration(modifiers, typeParameters, parameters, type, body) {
-    return new NodeObject(SyntaxKind.Constructor, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      body
-    });
-  }
-  function createGetAccessorDeclaration(modifiers, name, typeParameters, parameters, type, body) {
-    return new NodeObject(SyntaxKind.GetAccessor, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      body
-    });
-  }
-  function createSetAccessorDeclaration(modifiers, name, typeParameters, parameters, type, body) {
-    return new NodeObject(SyntaxKind.SetAccessor, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      body
-    });
-  }
-  function createIndexSignatureDeclaration(modifiers, parameters, type) {
-    return new NodeObject(SyntaxKind.IndexSignature, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createMethodSignatureDeclaration(modifiers, name, postfixToken, typeParameters, parameters, type) {
-    return new NodeObject(SyntaxKind.MethodSignature, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      postfixToken,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createMethodDeclaration(modifiers, asteriskToken, name, postfixToken, typeParameters, parameters, type, body) {
-    return new NodeObject(SyntaxKind.MethodDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      asteriskToken,
-      name,
-      postfixToken,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      body
-    });
-  }
-  function createPropertySignatureDeclaration(modifiers, name, postfixToken, type, initializer) {
-    return new NodeObject(SyntaxKind.PropertySignature, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      postfixToken,
-      type,
-      initializer
-    });
-  }
-  function createPropertyDeclaration(modifiers, name, postfixToken, type, initializer) {
-    return new NodeObject(SyntaxKind.PropertyDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      postfixToken,
-      type,
-      initializer
-    });
-  }
-  function createClassStaticBlockDeclaration(modifiers, body) {
-    return new NodeObject(SyntaxKind.ClassStaticBlockDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      body
-    });
-  }
-  function createBinaryExpression(modifiers, left, type, operatorToken, right) {
-    return new NodeObject(SyntaxKind.BinaryExpression, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      left,
-      type,
-      operatorToken,
-      right
-    });
-  }
-  function createPrefixUnaryExpression(operator, operand) {
-    return new NodeObject(SyntaxKind.PrefixUnaryExpression, {
-      operator,
-      operand
-    });
-  }
-  function createPostfixUnaryExpression(operand, operator) {
-    return new NodeObject(SyntaxKind.PostfixUnaryExpression, {
-      operand,
-      operator
-    });
-  }
-  function createYieldExpression(asteriskToken, expression) {
-    return new NodeObject(SyntaxKind.YieldExpression, {
-      asteriskToken,
-      expression
-    });
-  }
-  function createArrowFunction(modifiers, typeParameters, parameters, type, equalsGreaterThanToken, body) {
-    return new NodeObject(SyntaxKind.ArrowFunction, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      equalsGreaterThanToken,
-      body
-    });
-  }
-  function createFunctionExpression(modifiers, asteriskToken, name, typeParameters, parameters, type, body) {
-    return new NodeObject(SyntaxKind.FunctionExpression, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      asteriskToken,
-      name,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type,
-      body
-    });
-  }
-  function createAsExpression(expression, type) {
-    return new NodeObject(SyntaxKind.AsExpression, {
-      expression,
-      type
-    });
-  }
-  function createSatisfiesExpression(expression, type) {
-    return new NodeObject(SyntaxKind.SatisfiesExpression, {
-      expression,
-      type
-    });
-  }
-  function createConditionalExpression(condition, questionToken, whenTrue, colonToken, whenFalse) {
-    return new NodeObject(SyntaxKind.ConditionalExpression, {
-      condition,
-      questionToken,
-      whenTrue,
-      colonToken,
-      whenFalse
-    });
-  }
-  function createPropertyAccessExpression(expression, questionDotToken, name, flags) {
-    const node = new NodeObject(SyntaxKind.PropertyAccessExpression, {
-      expression,
-      questionDotToken,
-      name
-    });
-    node.flags = flags;
-    return node;
-  }
-  function createElementAccessExpression(expression, questionDotToken, argumentExpression, flags) {
-    const node = new NodeObject(SyntaxKind.ElementAccessExpression, {
-      expression,
-      questionDotToken,
-      argumentExpression
-    });
-    node.flags = flags;
-    return node;
-  }
-  function createCallExpression(expression, questionDotToken, typeArguments, arguments_, flags) {
-    const node = new NodeObject(SyntaxKind.CallExpression, {
-      expression,
-      questionDotToken,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0,
-      arguments: createNodeArray(arguments_)
-    });
-    node.flags = flags;
-    return node;
-  }
-  function createNewExpression(expression, typeArguments, arguments_) {
-    return new NodeObject(SyntaxKind.NewExpression, {
-      expression,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0,
-      arguments: arguments_ ? createNodeArray(arguments_) : void 0
-    });
-  }
-  function createMetaProperty(keywordToken, name) {
-    return new NodeObject(SyntaxKind.MetaProperty, {
-      keywordToken,
-      name
-    });
-  }
-  function createNonNullExpression(expression, flags) {
-    const node = new NodeObject(SyntaxKind.NonNullExpression, {
-      expression
-    });
-    node.flags = flags;
-    return node;
-  }
-  function createSpreadElement(expression) {
-    return new NodeObject(SyntaxKind.SpreadElement, {
-      expression
-    });
-  }
-  function createTemplateExpression(head, templateSpans) {
-    return new NodeObject(SyntaxKind.TemplateExpression, {
-      head,
-      templateSpans: createNodeArray(templateSpans)
-    });
-  }
-  function createTemplateSpan(expression, literal) {
-    return new NodeObject(SyntaxKind.TemplateSpan, {
-      expression,
-      literal
-    });
-  }
-  function createTaggedTemplateExpression(tag, questionDotToken, typeArguments, template, flags) {
-    const node = new NodeObject(SyntaxKind.TaggedTemplateExpression, {
-      tag,
-      questionDotToken,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0,
-      template
-    });
-    node.flags = flags;
-    return node;
-  }
-  function createParenthesizedExpression(expression) {
-    return new NodeObject(SyntaxKind.ParenthesizedExpression, {
-      expression
-    });
-  }
-  function createArrayLiteralExpression(elements, multiLine) {
-    return new NodeObject(SyntaxKind.ArrayLiteralExpression, {
-      elements: createNodeArray(elements),
-      multiLine
-    });
-  }
-  function createObjectLiteralExpression(properties, multiLine) {
-    return new NodeObject(SyntaxKind.ObjectLiteralExpression, {
-      properties: createNodeArray(properties),
-      multiLine
-    });
-  }
-  function createSpreadAssignment(expression) {
-    return new NodeObject(SyntaxKind.SpreadAssignment, {
-      expression
-    });
-  }
-  function createPropertyAssignment(modifiers, name, postfixToken, type, initializer) {
-    return new NodeObject(SyntaxKind.PropertyAssignment, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      postfixToken,
-      type,
-      initializer
-    });
-  }
-  function createShorthandPropertyAssignment(modifiers, name, postfixToken, type, equalsToken, objectAssignmentInitializer) {
-    return new NodeObject(SyntaxKind.ShorthandPropertyAssignment, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      postfixToken,
-      type,
-      equalsToken,
-      objectAssignmentInitializer
-    });
-  }
-  function createDeleteExpression(expression) {
-    return new NodeObject(SyntaxKind.DeleteExpression, {
-      expression
-    });
-  }
-  function createTypeOfExpression(expression) {
-    return new NodeObject(SyntaxKind.TypeOfExpression, {
-      expression
-    });
-  }
-  function createVoidExpression(expression) {
-    return new NodeObject(SyntaxKind.VoidExpression, {
-      expression
-    });
-  }
-  function createAwaitExpression(expression) {
-    return new NodeObject(SyntaxKind.AwaitExpression, {
-      expression
-    });
-  }
-  function createTypeAssertion(type, expression) {
-    return new NodeObject(SyntaxKind.TypeAssertionExpression, {
-      type,
-      expression
-    });
-  }
-  function createUnionTypeNode(types) {
-    return new NodeObject(SyntaxKind.UnionType, {
-      types: createNodeArray(types)
-    });
-  }
-  function createIntersectionTypeNode(types) {
-    return new NodeObject(SyntaxKind.IntersectionType, {
-      types: createNodeArray(types)
-    });
-  }
-  function createConditionalTypeNode(checkType, extendsType, trueType, falseType) {
-    return new NodeObject(SyntaxKind.ConditionalType, {
-      checkType,
-      extendsType,
-      trueType,
-      falseType
-    });
-  }
-  function createTypeOperatorNode(operator, type) {
-    return new NodeObject(SyntaxKind.TypeOperator, {
-      operator,
-      type
-    });
-  }
-  function createInferTypeNode(typeParameter) {
-    return new NodeObject(SyntaxKind.InferType, {
-      typeParameter
-    });
-  }
-  function createArrayTypeNode(elementType) {
-    return new NodeObject(SyntaxKind.ArrayType, {
-      elementType
-    });
-  }
-  function createIndexedAccessTypeNode(objectType, indexType) {
-    return new NodeObject(SyntaxKind.IndexedAccessType, {
-      objectType,
-      indexType
-    });
-  }
-  function createTypeReferenceNode(typeName, typeArguments) {
-    return new NodeObject(SyntaxKind.TypeReference, {
-      typeName,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0
-    });
-  }
-  function createExpressionWithTypeArguments(expression, typeArguments) {
-    return new NodeObject(SyntaxKind.ExpressionWithTypeArguments, {
-      expression,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0
-    });
-  }
-  function createLiteralTypeNode(literal) {
-    return new NodeObject(SyntaxKind.LiteralType, {
-      literal
-    });
-  }
-  function createTypePredicateNode(assertsModifier, parameterName, type) {
-    return new NodeObject(SyntaxKind.TypePredicate, {
-      assertsModifier,
-      parameterName,
-      type
-    });
-  }
-  function createImportAttribute(name, value) {
-    return new NodeObject(SyntaxKind.ImportAttribute, {
-      name,
-      value
-    });
-  }
-  function createImportAttributes(token, attributes, multiLine) {
-    return new NodeObject(SyntaxKind.ImportAttributes, {
-      token,
-      attributes: createNodeArray(attributes),
-      multiLine
-    });
-  }
-  function createTypeQueryNode(exprName, typeArguments) {
-    return new NodeObject(SyntaxKind.TypeQuery, {
-      exprName,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0
-    });
-  }
-  function createMappedTypeNode(readonlyToken, typeParameter, nameType, questionToken, type, members) {
-    return new NodeObject(SyntaxKind.MappedType, {
-      readonlyToken,
-      typeParameter,
-      nameType,
-      questionToken,
-      type,
-      members: members ? createNodeArray(members) : void 0
-    });
-  }
-  function createTypeLiteralNode(members) {
-    return new NodeObject(SyntaxKind.TypeLiteral, {
-      members: createNodeArray(members)
-    });
-  }
-  function createTupleTypeNode(elements) {
-    return new NodeObject(SyntaxKind.TupleType, {
-      elements: createNodeArray(elements)
-    });
-  }
-  function createNamedTupleMember(dotDotDotToken, name, questionToken, type) {
-    return new NodeObject(SyntaxKind.NamedTupleMember, {
-      dotDotDotToken,
-      name,
-      questionToken,
-      type
-    });
-  }
-  function createOptionalTypeNode(type) {
-    return new NodeObject(SyntaxKind.OptionalType, {
-      type
-    });
-  }
-  function createRestTypeNode(type) {
-    return new NodeObject(SyntaxKind.RestType, {
-      type
-    });
-  }
-  function createParenthesizedTypeNode(type) {
-    return new NodeObject(SyntaxKind.ParenthesizedType, {
-      type
-    });
-  }
-  function createFunctionTypeNode(typeParameters, parameters, type) {
-    return new NodeObject(SyntaxKind.FunctionType, {
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createConstructorTypeNode(modifiers, typeParameters, parameters, type) {
-    return new NodeObject(SyntaxKind.ConstructorType, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createTemplateLiteralTypeNode(head, templateSpans) {
-    return new NodeObject(SyntaxKind.TemplateLiteralType, {
-      head,
-      templateSpans: createNodeArray(templateSpans)
-    });
-  }
-  function createTemplateLiteralTypeSpan(type, literal) {
-    return new NodeObject(SyntaxKind.TemplateLiteralTypeSpan, {
-      type,
-      literal
-    });
-  }
-  function createSyntheticExpression(type, isSpread, tupleNameSource) {
-    return new NodeObject(SyntaxKind.SyntheticExpression, {
-      type,
-      isSpread,
-      tupleNameSource
-    });
-  }
-  function createPartiallyEmittedExpression(expression) {
-    return new NodeObject(SyntaxKind.PartiallyEmittedExpression, {
-      expression
-    });
-  }
-  function createJsxElement(openingElement, children, closingElement) {
-    return new NodeObject(SyntaxKind.JsxElement, {
-      openingElement,
-      children: createNodeArray(children),
-      closingElement
-    });
-  }
-  function createJsxAttributes(properties) {
-    return new NodeObject(SyntaxKind.JsxAttributes, {
-      properties: createNodeArray(properties)
-    });
-  }
-  function createJsxNamespacedName(namespace, name) {
-    return new NodeObject(SyntaxKind.JsxNamespacedName, {
-      namespace,
-      name
-    });
-  }
-  function createJsxOpeningElement(tagName, typeArguments, attributes) {
-    return new NodeObject(SyntaxKind.JsxOpeningElement, {
-      tagName,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0,
-      attributes
-    });
-  }
-  function createJsxSelfClosingElement(tagName, typeArguments, attributes) {
-    return new NodeObject(SyntaxKind.JsxSelfClosingElement, {
-      tagName,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0,
-      attributes
-    });
-  }
-  function createJsxFragment(openingFragment, children, closingFragment) {
-    return new NodeObject(SyntaxKind.JsxFragment, {
-      openingFragment,
-      children: createNodeArray(children),
-      closingFragment
-    });
-  }
-  function createJsxAttribute(name, initializer) {
-    return new NodeObject(SyntaxKind.JsxAttribute, {
-      name,
-      initializer
-    });
-  }
-  function createJsxSpreadAttribute(expression) {
-    return new NodeObject(SyntaxKind.JsxSpreadAttribute, {
-      expression
-    });
-  }
-  function createJsxClosingElement(tagName) {
-    return new NodeObject(SyntaxKind.JsxClosingElement, {
-      tagName
-    });
-  }
-  function createJsxExpression(dotDotDotToken, expression) {
-    return new NodeObject(SyntaxKind.JsxExpression, {
-      dotDotDotToken,
-      expression
-    });
-  }
-  function createSyntaxList(children) {
-    return new NodeObject(SyntaxKind.SyntaxList, {
-      children
-    });
-  }
-  function createJSDoc(comment, tags) {
-    return new NodeObject(SyntaxKind.JSDoc, {
-      comment: createNodeArray(comment),
-      tags: tags ? createNodeArray(tags) : void 0
-    });
-  }
-  function createJSDocTypeExpression(type) {
-    return new NodeObject(SyntaxKind.JSDocTypeExpression, {
-      type
-    });
-  }
-  function createJSDocNonNullableType(type) {
-    return new NodeObject(SyntaxKind.JSDocNonNullableType, {
-      type
-    });
-  }
-  function createJSDocNullableType(type) {
-    return new NodeObject(SyntaxKind.JSDocNullableType, {
-      type
-    });
-  }
-  function createJSDocVariadicType(type) {
-    return new NodeObject(SyntaxKind.JSDocVariadicType, {
-      type
-    });
-  }
-  function createJSDocOptionalType(type) {
-    return new NodeObject(SyntaxKind.JSDocOptionalType, {
-      type
-    });
-  }
-  function createJSDocTypeTag(tagName, typeExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocTypeTag, {
-      tagName,
-      typeExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocUnknownTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocUnknownTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocTemplateTag(tagName, constraint, typeParameters, comment) {
-    return new NodeObject(SyntaxKind.JSDocTemplateTag, {
-      tagName,
-      constraint,
-      typeParameters: createNodeArray(typeParameters),
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocReturnTag(tagName, typeExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocReturnTag, {
-      tagName,
-      typeExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocPublicTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocPublicTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocPrivateTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocPrivateTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocProtectedTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocProtectedTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocReadonlyTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocReadonlyTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocOverrideTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocOverrideTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocDeprecatedTag(tagName, comment) {
-    return new NodeObject(SyntaxKind.JSDocDeprecatedTag, {
-      tagName,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocSeeTag(tagName, nameExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocSeeTag, {
-      tagName,
-      nameExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocImplementsTag(tagName, className, comment) {
-    return new NodeObject(SyntaxKind.JSDocImplementsTag, {
-      tagName,
-      className,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocAugmentsTag(tagName, className, comment) {
-    return new NodeObject(SyntaxKind.JSDocAugmentsTag, {
-      tagName,
-      className,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocSatisfiesTag(tagName, typeExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocSatisfiesTag, {
-      tagName,
-      typeExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocThrowsTag(tagName, typeExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocThrowsTag, {
-      tagName,
-      typeExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocThisTag(tagName, typeExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocThisTag, {
-      tagName,
-      typeExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocImportTag(tagName, importClause, moduleSpecifier, attributes, comment) {
-    return new NodeObject(SyntaxKind.JSDocImportTag, {
-      tagName,
-      importClause,
-      moduleSpecifier,
-      attributes,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocCallbackTag(tagName, typeExpression, name, comment) {
-    return new NodeObject(SyntaxKind.JSDocCallbackTag, {
-      tagName,
-      typeExpression,
-      name,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocOverloadTag(tagName, typeExpression, comment) {
-    return new NodeObject(SyntaxKind.JSDocOverloadTag, {
-      tagName,
-      typeExpression,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocTypedefTag(tagName, typeExpression, name, comment) {
-    return new NodeObject(SyntaxKind.JSDocTypedefTag, {
-      tagName,
-      typeExpression,
-      name,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocSignature(typeParameters, parameters, type) {
-    return new NodeObject(SyntaxKind.JSDocSignature, {
-      typeParameters: typeParameters ? createNodeArray(typeParameters) : void 0,
-      parameters: createNodeArray(parameters),
-      type
-    });
-  }
-  function createJSDocNameReference(name) {
-    return new NodeObject(SyntaxKind.JSDocNameReference, {
-      name
-    });
-  }
-  function createModuleDeclaration(modifiers, keyword, name, body) {
-    return new NodeObject(SyntaxKind.ModuleDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      keyword,
-      name,
-      body
-    });
-  }
-  function createImportEqualsDeclaration(modifiers, isTypeOnly = false, name, moduleReference) {
-    return new NodeObject(SyntaxKind.ImportEqualsDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      isTypeOnly,
-      name,
-      moduleReference
-    });
-  }
-  function createExportDeclaration(modifiers, isTypeOnly, exportClause, moduleSpecifier, attributes) {
-    return new NodeObject(SyntaxKind.ExportDeclaration, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      isTypeOnly,
-      exportClause,
-      moduleSpecifier,
-      attributes
-    });
-  }
-  function createImportTypeNode(isTypeOf = false, argument, attributes, qualifier, typeArguments) {
-    return new NodeObject(SyntaxKind.ImportType, {
-      isTypeOf,
-      argument,
-      attributes,
-      qualifier,
-      typeArguments: typeArguments ? createNodeArray(typeArguments) : void 0
-    });
-  }
-  function createImportClause(phaseModifier, name, namedBindings) {
-    return new NodeObject(SyntaxKind.ImportClause, {
-      phaseModifier,
-      name,
-      namedBindings
-    });
-  }
-  function createImportSpecifier(isTypeOnly = false, propertyName, name) {
-    return new NodeObject(SyntaxKind.ImportSpecifier, {
-      isTypeOnly,
-      propertyName,
-      name
-    });
-  }
-  function createJSDocLink(name, text) {
-    return new NodeObject(SyntaxKind.JSDocLink, {
-      name,
-      text
-    });
-  }
-  function createJSDocLinkPlain(name, text) {
-    return new NodeObject(SyntaxKind.JSDocLinkPlain, {
-      name,
-      text
-    });
-  }
-  function createJSDocLinkCode(name, text) {
-    return new NodeObject(SyntaxKind.JSDocLinkCode, {
-      name,
-      text
-    });
-  }
-  function createTypeParameterDeclaration(modifiers, name, constraint, expression, defaultType) {
-    return new NodeObject(SyntaxKind.TypeParameter, {
-      modifiers: modifiers ? createNodeArray(modifiers) : void 0,
-      name,
-      constraint,
-      expression,
-      defaultType
-    });
-  }
-  function createSyntheticReferenceExpression(expression, thisArg) {
-    return new NodeObject(SyntaxKind.SyntheticReferenceExpression, {
-      expression,
-      thisArg
-    });
-  }
-  function createJSDocTypeLiteral(jsdocPropertyTags, isArrayType) {
-    return new NodeObject(SyntaxKind.JSDocTypeLiteral, {
-      jsdocPropertyTags,
-      isArrayType
-    });
-  }
-  function createForInStatement(awaitModifier, initializer, expression, statement) {
-    return new NodeObject(SyntaxKind.ForInStatement, {
-      awaitModifier,
-      initializer,
-      expression,
-      statement
-    });
-  }
-  function createForOfStatement(awaitModifier, initializer, expression, statement) {
-    return new NodeObject(SyntaxKind.ForOfStatement, {
-      awaitModifier,
-      initializer,
-      expression,
-      statement
-    });
-  }
-  function createCaseClause(expression, statements) {
-    return new NodeObject(SyntaxKind.CaseClause, {
-      expression,
-      statements: createNodeArray(statements)
-    });
-  }
-  function createDefaultClause(expression, statements) {
-    return new NodeObject(SyntaxKind.DefaultClause, {
-      expression,
-      statements: createNodeArray(statements)
-    });
-  }
-  function createObjectBindingPattern(elements) {
-    return new NodeObject(SyntaxKind.ObjectBindingPattern, {
-      elements: createNodeArray(elements)
-    });
-  }
-  function createArrayBindingPattern(elements) {
-    return new NodeObject(SyntaxKind.ArrayBindingPattern, {
-      elements: createNodeArray(elements)
-    });
-  }
-  function createJSDocParameterTag(tagName, name, isBracketed, typeExpression, isNameFirst, comment) {
-    return new NodeObject(SyntaxKind.JSDocParameterTag, {
-      tagName,
-      name,
-      isBracketed,
-      typeExpression,
-      isNameFirst,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function createJSDocPropertyTag(tagName, name, isBracketed, typeExpression, isNameFirst, comment) {
-    return new NodeObject(SyntaxKind.JSDocPropertyTag, {
-      tagName,
-      name,
-      isBracketed,
-      typeExpression,
-      isNameFirst,
-      comment: comment ? createNodeArray(comment) : void 0
-    });
-  }
-  function updateQualifiedName(node, left, right) {
-    return node.left !== left || node.right !== right ? createQualifiedName(left, right) : node;
-  }
-  function updateComputedPropertyName(node, expression) {
-    return node.expression !== expression ? createComputedPropertyName(expression) : node;
-  }
-  function updateDecorator(node, expression) {
-    return node.expression !== expression ? createDecorator(expression) : node;
-  }
-  function updateIfStatement(node, expression, thenStatement, elseStatement) {
-    return node.expression !== expression || node.thenStatement !== thenStatement || node.elseStatement !== elseStatement ? createIfStatement(expression, thenStatement, elseStatement) : node;
-  }
-  function updateDoStatement(node, statement, expression) {
-    return node.statement !== statement || node.expression !== expression ? createDoStatement(statement, expression) : node;
-  }
-  function updateWhileStatement(node, expression, statement) {
-    return node.expression !== expression || node.statement !== statement ? createWhileStatement(expression, statement) : node;
-  }
-  function updateForStatement(node, initializer, condition, incrementor, statement) {
-    return node.initializer !== initializer || node.condition !== condition || node.incrementor !== incrementor || node.statement !== statement ? createForStatement(initializer, condition, incrementor, statement) : node;
-  }
-  function updateBreakStatement(node, label) {
-    return node.label !== label ? createBreakStatement(label) : node;
-  }
-  function updateContinueStatement(node, label) {
-    return node.label !== label ? createContinueStatement(label) : node;
-  }
-  function updateReturnStatement(node, expression) {
-    return node.expression !== expression ? createReturnStatement(expression) : node;
-  }
-  function updateWithStatement(node, expression, statement) {
-    return node.expression !== expression || node.statement !== statement ? createWithStatement(expression, statement) : node;
-  }
-  function updateSwitchStatement(node, expression, caseBlock) {
-    return node.expression !== expression || node.caseBlock !== caseBlock ? createSwitchStatement(expression, caseBlock) : node;
-  }
-  function updateCaseBlock(node, clauses) {
-    return node.clauses !== clauses ? createCaseBlock(clauses) : node;
-  }
-  function updateThrowStatement(node, expression) {
-    return node.expression !== expression ? createThrowStatement(expression) : node;
-  }
-  function updateTryStatement(node, tryBlock, catchClause, finallyBlock) {
-    return node.tryBlock !== tryBlock || node.catchClause !== catchClause || node.finallyBlock !== finallyBlock ? createTryStatement(tryBlock, catchClause, finallyBlock) : node;
-  }
-  function updateCatchClause(node, variableDeclaration, block) {
-    return node.variableDeclaration !== variableDeclaration || node.block !== block ? createCatchClause(variableDeclaration, block) : node;
-  }
-  function updateLabeledStatement(node, label, statement) {
-    return node.label !== label || node.statement !== statement ? createLabeledStatement(label, statement) : node;
-  }
-  function updateExpressionStatement(node, expression) {
-    return node.expression !== expression ? createExpressionStatement(expression) : node;
-  }
-  function updateBlock(node, statements) {
-    return node.statements !== statements ? createBlock(statements, node.multiLine) : node;
-  }
-  function updateVariableStatement(node, modifiers, declarationList) {
-    return node.modifiers !== modifiers || node.declarationList !== declarationList ? createVariableStatement(modifiers, declarationList) : node;
-  }
-  function updateVariableDeclaration(node, name, exclamationToken, type, initializer) {
-    return node.name !== name || node.exclamationToken !== exclamationToken || node.type !== type || node.initializer !== initializer ? createVariableDeclaration(name, exclamationToken, type, initializer) : node;
-  }
-  function updateVariableDeclarationList(node, declarations) {
-    return node.declarations !== declarations ? createVariableDeclarationList(declarations, node.flags) : node;
-  }
-  function updateParameterDeclaration(node, modifiers, dotDotDotToken, name, questionToken, type, initializer) {
-    return node.modifiers !== modifiers || node.dotDotDotToken !== dotDotDotToken || node.name !== name || node.questionToken !== questionToken || node.type !== type || node.initializer !== initializer ? createParameterDeclaration(modifiers, dotDotDotToken, name, questionToken, type, initializer) : node;
-  }
-  function updateBindingElement(node, dotDotDotToken, propertyName, name, initializer) {
-    return node.dotDotDotToken !== dotDotDotToken || node.propertyName !== propertyName || node.name !== name || node.initializer !== initializer ? createBindingElement(dotDotDotToken, propertyName, name, initializer) : node;
-  }
-  function updateMissingDeclaration(node, modifiers) {
-    return node.modifiers !== modifiers ? createMissingDeclaration(modifiers) : node;
-  }
-  function updateFunctionDeclaration(node, modifiers, asteriskToken, name, typeParameters, parameters, type, body) {
-    return node.modifiers !== modifiers || node.asteriskToken !== asteriskToken || node.name !== name || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.body !== body ? createFunctionDeclaration(modifiers, asteriskToken, name, typeParameters, parameters, type, body) : node;
-  }
-  function updateClassDeclaration(node, modifiers, name, typeParameters, heritageClauses, members) {
-    return node.modifiers !== modifiers || node.name !== name || node.typeParameters !== typeParameters || node.heritageClauses !== heritageClauses || node.members !== members ? createClassDeclaration(modifiers, name, typeParameters, heritageClauses, members) : node;
-  }
-  function updateClassExpression(node, modifiers, name, typeParameters, heritageClauses, members) {
-    return node.modifiers !== modifiers || node.name !== name || node.typeParameters !== typeParameters || node.heritageClauses !== heritageClauses || node.members !== members ? createClassExpression(modifiers, name, typeParameters, heritageClauses, members) : node;
-  }
-  function updateHeritageClause(node, types) {
-    return node.types !== types ? createHeritageClause(node.token, types) : node;
-  }
-  function updateInterfaceDeclaration(node, modifiers, name, typeParameters, heritageClauses, members) {
-    return node.modifiers !== modifiers || node.name !== name || node.typeParameters !== typeParameters || node.heritageClauses !== heritageClauses || node.members !== members ? createInterfaceDeclaration(modifiers, name, typeParameters, heritageClauses, members) : node;
-  }
-  function updateTypeAliasDeclaration(node, modifiers, name, typeParameters, type) {
-    return node.modifiers !== modifiers || node.name !== name || node.typeParameters !== typeParameters || node.type !== type ? createTypeAliasDeclaration(modifiers, name, typeParameters, type) : node;
-  }
-  function updateEnumMember(node, name, initializer) {
-    return node.name !== name || node.initializer !== initializer ? createEnumMember(name, initializer) : node;
-  }
-  function updateEnumDeclaration(node, modifiers, name, members) {
-    return node.modifiers !== modifiers || node.name !== name || node.members !== members ? createEnumDeclaration(modifiers, name, members) : node;
-  }
-  function updateModuleBlock(node, statements) {
-    return node.statements !== statements ? createModuleBlock(statements) : node;
-  }
-  function updateImportDeclaration(node, modifiers, importClause, moduleSpecifier, attributes) {
-    return node.modifiers !== modifiers || node.importClause !== importClause || node.moduleSpecifier !== moduleSpecifier || node.attributes !== attributes ? createImportDeclaration(modifiers, importClause, moduleSpecifier, attributes) : node;
-  }
-  function updateExternalModuleReference(node, expression) {
-    return node.expression !== expression ? createExternalModuleReference(expression) : node;
-  }
-  function updateNamespaceImport(node, name) {
-    return node.name !== name ? createNamespaceImport(name) : node;
-  }
-  function updateNamedImports(node, elements) {
-    return node.elements !== elements ? createNamedImports(elements) : node;
-  }
-  function updateExportAssignment(node, modifiers, type, expression) {
-    return node.modifiers !== modifiers || node.type !== type || node.expression !== expression ? createExportAssignment(modifiers, node.isExportEquals, type, expression) : node;
-  }
-  function updateNamespaceExportDeclaration(node, modifiers, name) {
-    return node.modifiers !== modifiers || node.name !== name ? createNamespaceExportDeclaration(modifiers, name) : node;
-  }
-  function updateNamespaceExport(node, name) {
-    return node.name !== name ? createNamespaceExport(name) : node;
-  }
-  function updateNamedExports(node, elements) {
-    return node.elements !== elements ? createNamedExports(elements) : node;
-  }
-  function updateExportSpecifier(node, propertyName, name) {
-    return node.propertyName !== propertyName || node.name !== name ? createExportSpecifier(node.isTypeOnly, propertyName, name) : node;
-  }
-  function updateCallSignatureDeclaration(node, typeParameters, parameters, type) {
-    return node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type ? createCallSignatureDeclaration(typeParameters, parameters, type) : node;
-  }
-  function updateConstructSignatureDeclaration(node, typeParameters, parameters, type) {
-    return node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type ? createConstructSignatureDeclaration(typeParameters, parameters, type) : node;
-  }
-  function updateConstructorDeclaration(node, modifiers, typeParameters, parameters, type, body) {
-    return node.modifiers !== modifiers || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.body !== body ? createConstructorDeclaration(modifiers, typeParameters, parameters, type, body) : node;
-  }
-  function updateGetAccessorDeclaration(node, modifiers, name, typeParameters, parameters, type, body) {
-    return node.modifiers !== modifiers || node.name !== name || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.body !== body ? createGetAccessorDeclaration(modifiers, name, typeParameters, parameters, type, body) : node;
-  }
-  function updateSetAccessorDeclaration(node, modifiers, name, typeParameters, parameters, type, body) {
-    return node.modifiers !== modifiers || node.name !== name || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.body !== body ? createSetAccessorDeclaration(modifiers, name, typeParameters, parameters, type, body) : node;
-  }
-  function updateIndexSignatureDeclaration(node, modifiers, parameters, type) {
-    return node.modifiers !== modifiers || node.parameters !== parameters || node.type !== type ? createIndexSignatureDeclaration(modifiers, parameters, type) : node;
-  }
-  function updateMethodSignatureDeclaration(node, modifiers, name, postfixToken, typeParameters, parameters, type) {
-    return node.modifiers !== modifiers || node.name !== name || node.postfixToken !== postfixToken || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type ? createMethodSignatureDeclaration(modifiers, name, postfixToken, typeParameters, parameters, type) : node;
-  }
-  function updateMethodDeclaration(node, modifiers, asteriskToken, name, postfixToken, typeParameters, parameters, type, body) {
-    return node.modifiers !== modifiers || node.asteriskToken !== asteriskToken || node.name !== name || node.postfixToken !== postfixToken || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.body !== body ? createMethodDeclaration(modifiers, asteriskToken, name, postfixToken, typeParameters, parameters, type, body) : node;
-  }
-  function updatePropertySignatureDeclaration(node, modifiers, name, postfixToken, type, initializer) {
-    return node.modifiers !== modifiers || node.name !== name || node.postfixToken !== postfixToken || node.type !== type || node.initializer !== initializer ? createPropertySignatureDeclaration(modifiers, name, postfixToken, type, initializer) : node;
-  }
-  function updatePropertyDeclaration(node, modifiers, name, postfixToken, type, initializer) {
-    return node.modifiers !== modifiers || node.name !== name || node.postfixToken !== postfixToken || node.type !== type || node.initializer !== initializer ? createPropertyDeclaration(modifiers, name, postfixToken, type, initializer) : node;
-  }
-  function updateClassStaticBlockDeclaration(node, modifiers, body) {
-    return node.modifiers !== modifiers || node.body !== body ? createClassStaticBlockDeclaration(modifiers, body) : node;
-  }
-  function updateBinaryExpression(node, modifiers, left, type, operatorToken, right) {
-    return node.modifiers !== modifiers || node.left !== left || node.type !== type || node.operatorToken !== operatorToken || node.right !== right ? createBinaryExpression(modifiers, left, type, operatorToken, right) : node;
-  }
-  function updatePrefixUnaryExpression(node, operand) {
-    return node.operand !== operand ? createPrefixUnaryExpression(node.operator, operand) : node;
-  }
-  function updatePostfixUnaryExpression(node, operand) {
-    return node.operand !== operand ? createPostfixUnaryExpression(operand, node.operator) : node;
-  }
-  function updateYieldExpression(node, asteriskToken, expression) {
-    return node.asteriskToken !== asteriskToken || node.expression !== expression ? createYieldExpression(asteriskToken, expression) : node;
-  }
-  function updateArrowFunction(node, modifiers, typeParameters, parameters, type, equalsGreaterThanToken, body) {
-    return node.modifiers !== modifiers || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.equalsGreaterThanToken !== equalsGreaterThanToken || node.body !== body ? createArrowFunction(modifiers, typeParameters, parameters, type, equalsGreaterThanToken, body) : node;
-  }
-  function updateFunctionExpression(node, modifiers, asteriskToken, name, typeParameters, parameters, type, body) {
-    return node.modifiers !== modifiers || node.asteriskToken !== asteriskToken || node.name !== name || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type || node.body !== body ? createFunctionExpression(modifiers, asteriskToken, name, typeParameters, parameters, type, body) : node;
-  }
-  function updateAsExpression(node, expression, type) {
-    return node.expression !== expression || node.type !== type ? createAsExpression(expression, type) : node;
-  }
-  function updateSatisfiesExpression(node, expression, type) {
-    return node.expression !== expression || node.type !== type ? createSatisfiesExpression(expression, type) : node;
-  }
-  function updateConditionalExpression(node, condition, questionToken, whenTrue, colonToken, whenFalse) {
-    return node.condition !== condition || node.questionToken !== questionToken || node.whenTrue !== whenTrue || node.colonToken !== colonToken || node.whenFalse !== whenFalse ? createConditionalExpression(condition, questionToken, whenTrue, colonToken, whenFalse) : node;
-  }
-  function updatePropertyAccessExpression(node, expression, questionDotToken, name) {
-    return node.expression !== expression || node.questionDotToken !== questionDotToken || node.name !== name ? createPropertyAccessExpression(expression, questionDotToken, name, node.flags) : node;
-  }
-  function updateElementAccessExpression(node, expression, questionDotToken, argumentExpression) {
-    return node.expression !== expression || node.questionDotToken !== questionDotToken || node.argumentExpression !== argumentExpression ? createElementAccessExpression(expression, questionDotToken, argumentExpression, node.flags) : node;
-  }
-  function updateCallExpression(node, expression, questionDotToken, typeArguments, arguments_) {
-    return node.expression !== expression || node.questionDotToken !== questionDotToken || node.typeArguments !== typeArguments || node.arguments !== arguments_ ? createCallExpression(expression, questionDotToken, typeArguments, arguments_, node.flags) : node;
-  }
-  function updateNewExpression(node, expression, typeArguments, arguments_) {
-    return node.expression !== expression || node.typeArguments !== typeArguments || node.arguments !== arguments_ ? createNewExpression(expression, typeArguments, arguments_) : node;
-  }
-  function updateMetaProperty(node, name) {
-    return node.name !== name ? createMetaProperty(node.keywordToken, name) : node;
-  }
-  function updateNonNullExpression(node, expression) {
-    return node.expression !== expression ? createNonNullExpression(expression, node.flags) : node;
-  }
-  function updateSpreadElement(node, expression) {
-    return node.expression !== expression ? createSpreadElement(expression) : node;
-  }
-  function updateTemplateExpression(node, head, templateSpans) {
-    return node.head !== head || node.templateSpans !== templateSpans ? createTemplateExpression(head, templateSpans) : node;
-  }
-  function updateTemplateSpan(node, expression, literal) {
-    return node.expression !== expression || node.literal !== literal ? createTemplateSpan(expression, literal) : node;
-  }
-  function updateTaggedTemplateExpression(node, tag, questionDotToken, typeArguments, template) {
-    return node.tag !== tag || node.questionDotToken !== questionDotToken || node.typeArguments !== typeArguments || node.template !== template ? createTaggedTemplateExpression(tag, questionDotToken, typeArguments, template, node.flags) : node;
-  }
-  function updateParenthesizedExpression(node, expression) {
-    return node.expression !== expression ? createParenthesizedExpression(expression) : node;
-  }
-  function updateArrayLiteralExpression(node, elements) {
-    return node.elements !== elements ? createArrayLiteralExpression(elements, node.multiLine) : node;
-  }
-  function updateObjectLiteralExpression(node, properties) {
-    return node.properties !== properties ? createObjectLiteralExpression(properties, node.multiLine) : node;
-  }
-  function updateSpreadAssignment(node, expression) {
-    return node.expression !== expression ? createSpreadAssignment(expression) : node;
-  }
-  function updatePropertyAssignment(node, modifiers, name, postfixToken, type, initializer) {
-    return node.modifiers !== modifiers || node.name !== name || node.postfixToken !== postfixToken || node.type !== type || node.initializer !== initializer ? createPropertyAssignment(modifiers, name, postfixToken, type, initializer) : node;
-  }
-  function updateShorthandPropertyAssignment(node, modifiers, name, postfixToken, type, equalsToken, objectAssignmentInitializer) {
-    return node.modifiers !== modifiers || node.name !== name || node.postfixToken !== postfixToken || node.type !== type || node.equalsToken !== equalsToken || node.objectAssignmentInitializer !== objectAssignmentInitializer ? createShorthandPropertyAssignment(modifiers, name, postfixToken, type, equalsToken, objectAssignmentInitializer) : node;
-  }
-  function updateDeleteExpression(node, expression) {
-    return node.expression !== expression ? createDeleteExpression(expression) : node;
-  }
-  function updateTypeOfExpression(node, expression) {
-    return node.expression !== expression ? createTypeOfExpression(expression) : node;
-  }
-  function updateVoidExpression(node, expression) {
-    return node.expression !== expression ? createVoidExpression(expression) : node;
-  }
-  function updateAwaitExpression(node, expression) {
-    return node.expression !== expression ? createAwaitExpression(expression) : node;
-  }
-  function updateTypeAssertion(node, type, expression) {
-    return node.type !== type || node.expression !== expression ? createTypeAssertion(type, expression) : node;
-  }
-  function updateUnionTypeNode(node, types) {
-    return node.types !== types ? createUnionTypeNode(types) : node;
-  }
-  function updateIntersectionTypeNode(node, types) {
-    return node.types !== types ? createIntersectionTypeNode(types) : node;
-  }
-  function updateConditionalTypeNode(node, checkType, extendsType, trueType, falseType) {
-    return node.checkType !== checkType || node.extendsType !== extendsType || node.trueType !== trueType || node.falseType !== falseType ? createConditionalTypeNode(checkType, extendsType, trueType, falseType) : node;
-  }
-  function updateTypeOperatorNode(node, type) {
-    return node.type !== type ? createTypeOperatorNode(node.operator, type) : node;
-  }
-  function updateInferTypeNode(node, typeParameter) {
-    return node.typeParameter !== typeParameter ? createInferTypeNode(typeParameter) : node;
-  }
-  function updateArrayTypeNode(node, elementType) {
-    return node.elementType !== elementType ? createArrayTypeNode(elementType) : node;
-  }
-  function updateIndexedAccessTypeNode(node, objectType, indexType) {
-    return node.objectType !== objectType || node.indexType !== indexType ? createIndexedAccessTypeNode(objectType, indexType) : node;
-  }
-  function updateTypeReferenceNode(node, typeName, typeArguments) {
-    return node.typeName !== typeName || node.typeArguments !== typeArguments ? createTypeReferenceNode(typeName, typeArguments) : node;
-  }
-  function updateExpressionWithTypeArguments(node, expression, typeArguments) {
-    return node.expression !== expression || node.typeArguments !== typeArguments ? createExpressionWithTypeArguments(expression, typeArguments) : node;
-  }
-  function updateLiteralTypeNode(node, literal) {
-    return node.literal !== literal ? createLiteralTypeNode(literal) : node;
-  }
-  function updateTypePredicateNode(node, assertsModifier, parameterName, type) {
-    return node.assertsModifier !== assertsModifier || node.parameterName !== parameterName || node.type !== type ? createTypePredicateNode(assertsModifier, parameterName, type) : node;
-  }
-  function updateImportAttribute(node, name, value) {
-    return node.name !== name || node.value !== value ? createImportAttribute(name, value) : node;
-  }
-  function updateImportAttributes(node, attributes) {
-    return node.attributes !== attributes ? createImportAttributes(node.token, attributes, node.multiLine) : node;
-  }
-  function updateTypeQueryNode(node, exprName, typeArguments) {
-    return node.exprName !== exprName || node.typeArguments !== typeArguments ? createTypeQueryNode(exprName, typeArguments) : node;
-  }
-  function updateMappedTypeNode(node, readonlyToken, typeParameter, nameType, questionToken, type, members) {
-    return node.readonlyToken !== readonlyToken || node.typeParameter !== typeParameter || node.nameType !== nameType || node.questionToken !== questionToken || node.type !== type || node.members !== members ? createMappedTypeNode(readonlyToken, typeParameter, nameType, questionToken, type, members) : node;
-  }
-  function updateTypeLiteralNode(node, members) {
-    return node.members !== members ? createTypeLiteralNode(members) : node;
-  }
-  function updateTupleTypeNode(node, elements) {
-    return node.elements !== elements ? createTupleTypeNode(elements) : node;
-  }
-  function updateNamedTupleMember(node, dotDotDotToken, name, questionToken, type) {
-    return node.dotDotDotToken !== dotDotDotToken || node.name !== name || node.questionToken !== questionToken || node.type !== type ? createNamedTupleMember(dotDotDotToken, name, questionToken, type) : node;
-  }
-  function updateOptionalTypeNode(node, type) {
-    return node.type !== type ? createOptionalTypeNode(type) : node;
-  }
-  function updateRestTypeNode(node, type) {
-    return node.type !== type ? createRestTypeNode(type) : node;
-  }
-  function updateParenthesizedTypeNode(node, type) {
-    return node.type !== type ? createParenthesizedTypeNode(type) : node;
-  }
-  function updateFunctionTypeNode(node, typeParameters, parameters, type) {
-    return node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type ? createFunctionTypeNode(typeParameters, parameters, type) : node;
-  }
-  function updateConstructorTypeNode(node, modifiers, typeParameters, parameters, type) {
-    return node.modifiers !== modifiers || node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type ? createConstructorTypeNode(modifiers, typeParameters, parameters, type) : node;
-  }
-  function updateTemplateLiteralTypeNode(node, head, templateSpans) {
-    return node.head !== head || node.templateSpans !== templateSpans ? createTemplateLiteralTypeNode(head, templateSpans) : node;
-  }
-  function updateTemplateLiteralTypeSpan(node, type, literal) {
-    return node.type !== type || node.literal !== literal ? createTemplateLiteralTypeSpan(type, literal) : node;
-  }
-  function updateSyntheticExpression(node, tupleNameSource) {
-    return node.tupleNameSource !== tupleNameSource ? createSyntheticExpression(node.type, node.isSpread, tupleNameSource) : node;
-  }
-  function updatePartiallyEmittedExpression(node, expression) {
-    return node.expression !== expression ? createPartiallyEmittedExpression(expression) : node;
-  }
-  function updateJsxElement(node, openingElement, children, closingElement) {
-    return node.openingElement !== openingElement || node.children !== children || node.closingElement !== closingElement ? createJsxElement(openingElement, children, closingElement) : node;
-  }
-  function updateJsxAttributes(node, properties) {
-    return node.properties !== properties ? createJsxAttributes(properties) : node;
-  }
-  function updateJsxNamespacedName(node, namespace, name) {
-    return node.namespace !== namespace || node.name !== name ? createJsxNamespacedName(namespace, name) : node;
-  }
-  function updateJsxOpeningElement(node, tagName, typeArguments, attributes) {
-    return node.tagName !== tagName || node.typeArguments !== typeArguments || node.attributes !== attributes ? createJsxOpeningElement(tagName, typeArguments, attributes) : node;
-  }
-  function updateJsxSelfClosingElement(node, tagName, typeArguments, attributes) {
-    return node.tagName !== tagName || node.typeArguments !== typeArguments || node.attributes !== attributes ? createJsxSelfClosingElement(tagName, typeArguments, attributes) : node;
-  }
-  function updateJsxFragment(node, openingFragment, children, closingFragment) {
-    return node.openingFragment !== openingFragment || node.children !== children || node.closingFragment !== closingFragment ? createJsxFragment(openingFragment, children, closingFragment) : node;
-  }
-  function updateJsxAttribute(node, name, initializer) {
-    return node.name !== name || node.initializer !== initializer ? createJsxAttribute(name, initializer) : node;
-  }
-  function updateJsxSpreadAttribute(node, expression) {
-    return node.expression !== expression ? createJsxSpreadAttribute(expression) : node;
-  }
-  function updateJsxClosingElement(node, tagName) {
-    return node.tagName !== tagName ? createJsxClosingElement(tagName) : node;
-  }
-  function updateJsxExpression(node, dotDotDotToken, expression) {
-    return node.dotDotDotToken !== dotDotDotToken || node.expression !== expression ? createJsxExpression(dotDotDotToken, expression) : node;
-  }
-  function updateSyntaxList(node, children) {
-    return node.children !== children ? createSyntaxList(children) : node;
-  }
-  function updateJSDoc(node, comment, tags) {
-    return node.comment !== comment || node.tags !== tags ? createJSDoc(comment, tags) : node;
-  }
-  function updateJSDocTypeExpression(node, type) {
-    return node.type !== type ? createJSDocTypeExpression(type) : node;
-  }
-  function updateJSDocNonNullableType(node, type) {
-    return node.type !== type ? createJSDocNonNullableType(type) : node;
-  }
-  function updateJSDocNullableType(node, type) {
-    return node.type !== type ? createJSDocNullableType(type) : node;
-  }
-  function updateJSDocVariadicType(node, type) {
-    return node.type !== type ? createJSDocVariadicType(type) : node;
-  }
-  function updateJSDocOptionalType(node, type) {
-    return node.type !== type ? createJSDocOptionalType(type) : node;
-  }
-  function updateJSDocTypeTag(node, tagName, typeExpression, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocTypeTag(tagName, typeExpression, comment) : node;
-  }
-  function updateJSDocUnknownTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocUnknownTag(tagName, comment) : node;
-  }
-  function updateJSDocTemplateTag(node, tagName, constraint, typeParameters, comment) {
-    return node.tagName !== tagName || node.constraint !== constraint || node.typeParameters !== typeParameters || node.comment !== comment ? createJSDocTemplateTag(tagName, constraint, typeParameters, comment) : node;
-  }
-  function updateJSDocReturnTag(node, tagName, typeExpression, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocReturnTag(tagName, typeExpression, comment) : node;
-  }
-  function updateJSDocPublicTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocPublicTag(tagName, comment) : node;
-  }
-  function updateJSDocPrivateTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocPrivateTag(tagName, comment) : node;
-  }
-  function updateJSDocProtectedTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocProtectedTag(tagName, comment) : node;
-  }
-  function updateJSDocReadonlyTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocReadonlyTag(tagName, comment) : node;
-  }
-  function updateJSDocOverrideTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocOverrideTag(tagName, comment) : node;
-  }
-  function updateJSDocDeprecatedTag(node, tagName, comment) {
-    return node.tagName !== tagName || node.comment !== comment ? createJSDocDeprecatedTag(tagName, comment) : node;
-  }
-  function updateJSDocSeeTag(node, tagName, nameExpression, comment) {
-    return node.tagName !== tagName || node.nameExpression !== nameExpression || node.comment !== comment ? createJSDocSeeTag(tagName, nameExpression, comment) : node;
-  }
-  function updateJSDocImplementsTag(node, tagName, className, comment) {
-    return node.tagName !== tagName || node.className !== className || node.comment !== comment ? createJSDocImplementsTag(tagName, className, comment) : node;
-  }
-  function updateJSDocAugmentsTag(node, tagName, className, comment) {
-    return node.tagName !== tagName || node.className !== className || node.comment !== comment ? createJSDocAugmentsTag(tagName, className, comment) : node;
-  }
-  function updateJSDocSatisfiesTag(node, tagName, typeExpression, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocSatisfiesTag(tagName, typeExpression, comment) : node;
-  }
-  function updateJSDocThrowsTag(node, tagName, typeExpression, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocThrowsTag(tagName, typeExpression, comment) : node;
-  }
-  function updateJSDocThisTag(node, tagName, typeExpression, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocThisTag(tagName, typeExpression, comment) : node;
-  }
-  function updateJSDocImportTag(node, tagName, importClause, moduleSpecifier, attributes, comment) {
-    return node.tagName !== tagName || node.importClause !== importClause || node.moduleSpecifier !== moduleSpecifier || node.attributes !== attributes || node.comment !== comment ? createJSDocImportTag(tagName, importClause, moduleSpecifier, attributes, comment) : node;
-  }
-  function updateJSDocCallbackTag(node, tagName, typeExpression, name, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.name !== name || node.comment !== comment ? createJSDocCallbackTag(tagName, typeExpression, name, comment) : node;
-  }
-  function updateJSDocOverloadTag(node, tagName, typeExpression, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocOverloadTag(tagName, typeExpression, comment) : node;
-  }
-  function updateJSDocTypedefTag(node, tagName, typeExpression, name, comment) {
-    return node.tagName !== tagName || node.typeExpression !== typeExpression || node.name !== name || node.comment !== comment ? createJSDocTypedefTag(tagName, typeExpression, name, comment) : node;
-  }
-  function updateJSDocSignature(node, typeParameters, parameters, type) {
-    return node.typeParameters !== typeParameters || node.parameters !== parameters || node.type !== type ? createJSDocSignature(typeParameters, parameters, type) : node;
-  }
-  function updateJSDocNameReference(node, name) {
-    return node.name !== name ? createJSDocNameReference(name) : node;
-  }
-  function updateModuleDeclaration(node, modifiers, name, body) {
-    return node.modifiers !== modifiers || node.name !== name || node.body !== body ? createModuleDeclaration(modifiers, node.keyword, name, body) : node;
-  }
-  function updateImportEqualsDeclaration(node, modifiers, name, moduleReference) {
-    return node.modifiers !== modifiers || node.name !== name || node.moduleReference !== moduleReference ? createImportEqualsDeclaration(modifiers, node.isTypeOnly, name, moduleReference) : node;
-  }
-  function updateExportDeclaration(node, modifiers, exportClause, moduleSpecifier, attributes) {
-    return node.modifiers !== modifiers || node.exportClause !== exportClause || node.moduleSpecifier !== moduleSpecifier || node.attributes !== attributes ? createExportDeclaration(modifiers, node.isTypeOnly, exportClause, moduleSpecifier, attributes) : node;
-  }
-  function updateImportTypeNode(node, argument, attributes, qualifier, typeArguments) {
-    return node.argument !== argument || node.attributes !== attributes || node.qualifier !== qualifier || node.typeArguments !== typeArguments ? createImportTypeNode(node.isTypeOf, argument, attributes, qualifier, typeArguments) : node;
-  }
-  function updateImportClause(node, name, namedBindings) {
-    return node.name !== name || node.namedBindings !== namedBindings ? createImportClause(node.phaseModifier, name, namedBindings) : node;
-  }
-  function updateImportSpecifier(node, propertyName, name) {
-    return node.propertyName !== propertyName || node.name !== name ? createImportSpecifier(node.isTypeOnly, propertyName, name) : node;
-  }
-  function updateJSDocLink(node, name) {
-    return node.name !== name ? createJSDocLink(name, node.text) : node;
-  }
-  function updateJSDocLinkPlain(node, name) {
-    return node.name !== name ? createJSDocLinkPlain(name, node.text) : node;
-  }
-  function updateJSDocLinkCode(node, name) {
-    return node.name !== name ? createJSDocLinkCode(name, node.text) : node;
-  }
-  function updateTypeParameterDeclaration(node, modifiers, name, constraint, expression, defaultType) {
-    return node.modifiers !== modifiers || node.name !== name || node.constraint !== constraint || node.expression !== expression || node.defaultType !== defaultType ? createTypeParameterDeclaration(modifiers, name, constraint, expression, defaultType) : node;
-  }
-  function updateSyntheticReferenceExpression(node, expression, thisArg) {
-    return node.expression !== expression || node.thisArg !== thisArg ? createSyntheticReferenceExpression(expression, thisArg) : node;
-  }
-  function updateJSDocTypeLiteral(node, jsdocPropertyTags) {
-    return node.jsdocPropertyTags !== jsdocPropertyTags ? createJSDocTypeLiteral(jsdocPropertyTags, node.isArrayType) : node;
-  }
-  function updateForInStatement(node, awaitModifier, initializer, expression, statement) {
-    return node.awaitModifier !== awaitModifier || node.initializer !== initializer || node.expression !== expression || node.statement !== statement ? createForInStatement(awaitModifier, initializer, expression, statement) : node;
-  }
-  function updateForOfStatement(node, awaitModifier, initializer, expression, statement) {
-    return node.awaitModifier !== awaitModifier || node.initializer !== initializer || node.expression !== expression || node.statement !== statement ? createForOfStatement(awaitModifier, initializer, expression, statement) : node;
-  }
-  function updateCaseClause(node, expression, statements) {
-    return node.expression !== expression || node.statements !== statements ? createCaseClause(expression, statements) : node;
-  }
-  function updateDefaultClause(node, expression, statements) {
-    return node.expression !== expression || node.statements !== statements ? createDefaultClause(expression, statements) : node;
-  }
-  function updateObjectBindingPattern(node, elements) {
-    return node.elements !== elements ? createObjectBindingPattern(elements) : node;
-  }
-  function updateArrayBindingPattern(node, elements) {
-    return node.elements !== elements ? createArrayBindingPattern(elements) : node;
-  }
-  function updateJSDocParameterTag(node, tagName, name, typeExpression, comment) {
-    return node.tagName !== tagName || node.name !== name || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocParameterTag(tagName, name, node.isBracketed, typeExpression, node.isNameFirst, comment) : node;
-  }
-  function updateJSDocPropertyTag(node, tagName, name, typeExpression, comment) {
-    return node.tagName !== tagName || node.name !== name || node.typeExpression !== typeExpression || node.comment !== comment ? createJSDocPropertyTag(tagName, name, node.isBracketed, typeExpression, node.isNameFirst, comment) : node;
-  }
-  function cloneSourceFileWithChanges(source4, statements, endOfFileToken) {
-    return new NodeObject(SyntaxKind.SourceFile, {
-      ...cloneSourceFileData(source4),
-      statements: createNodeArray(statements),
-      endOfFileToken
-    });
-  }
-  function updateSourceFile(node, statements, endOfFileToken) {
-    return node.statements !== statements || node.endOfFileToken !== endOfFileToken ? cloneSourceFileWithChanges(node, statements, endOfFileToken) : node;
-  }
-
-  // node_modules/typescript/dist/ast/scanner.js
-  var EscapeSequenceScanningFlags = {
-    String: 1 << 0,
-    ReportErrors: 1 << 1,
-    RegularExpression: 1 << 2,
-    AnnexB: 1 << 3,
-    AnyUnicodeMode: 1 << 4,
-    AtomEscape: 1 << 5,
-    ReportInvalidEscapeErrors: 1 << 2 | 1 << 1,
-    AllowExtendedUnicodeEscape: 1 << 0 | 1 << 4
-  };
-  var textToKeywordObj = {
-    abstract: SyntaxKind.AbstractKeyword,
-    accessor: SyntaxKind.AccessorKeyword,
-    any: SyntaxKind.AnyKeyword,
-    as: SyntaxKind.AsKeyword,
-    asserts: SyntaxKind.AssertsKeyword,
-    assert: SyntaxKind.AssertKeyword,
-    bigint: SyntaxKind.BigIntKeyword,
-    boolean: SyntaxKind.BooleanKeyword,
-    break: SyntaxKind.BreakKeyword,
-    case: SyntaxKind.CaseKeyword,
-    catch: SyntaxKind.CatchKeyword,
-    class: SyntaxKind.ClassKeyword,
-    continue: SyntaxKind.ContinueKeyword,
-    const: SyntaxKind.ConstKeyword,
-    ["constructor"]: SyntaxKind.ConstructorKeyword,
-    debugger: SyntaxKind.DebuggerKeyword,
-    declare: SyntaxKind.DeclareKeyword,
-    default: SyntaxKind.DefaultKeyword,
-    defer: SyntaxKind.DeferKeyword,
-    delete: SyntaxKind.DeleteKeyword,
-    do: SyntaxKind.DoKeyword,
-    else: SyntaxKind.ElseKeyword,
-    enum: SyntaxKind.EnumKeyword,
-    export: SyntaxKind.ExportKeyword,
-    extends: SyntaxKind.ExtendsKeyword,
-    false: SyntaxKind.FalseKeyword,
-    finally: SyntaxKind.FinallyKeyword,
-    for: SyntaxKind.ForKeyword,
-    from: SyntaxKind.FromKeyword,
-    function: SyntaxKind.FunctionKeyword,
-    get: SyntaxKind.GetKeyword,
-    if: SyntaxKind.IfKeyword,
-    implements: SyntaxKind.ImplementsKeyword,
-    import: SyntaxKind.ImportKeyword,
-    in: SyntaxKind.InKeyword,
-    infer: SyntaxKind.InferKeyword,
-    instanceof: SyntaxKind.InstanceOfKeyword,
-    interface: SyntaxKind.InterfaceKeyword,
-    intrinsic: SyntaxKind.IntrinsicKeyword,
-    is: SyntaxKind.IsKeyword,
-    keyof: SyntaxKind.KeyOfKeyword,
-    let: SyntaxKind.LetKeyword,
-    module: SyntaxKind.ModuleKeyword,
-    namespace: SyntaxKind.NamespaceKeyword,
-    never: SyntaxKind.NeverKeyword,
-    new: SyntaxKind.NewKeyword,
-    null: SyntaxKind.NullKeyword,
-    number: SyntaxKind.NumberKeyword,
-    object: SyntaxKind.ObjectKeyword,
-    package: SyntaxKind.PackageKeyword,
-    private: SyntaxKind.PrivateKeyword,
-    protected: SyntaxKind.ProtectedKeyword,
-    public: SyntaxKind.PublicKeyword,
-    override: SyntaxKind.OverrideKeyword,
-    out: SyntaxKind.OutKeyword,
-    readonly: SyntaxKind.ReadonlyKeyword,
-    require: SyntaxKind.RequireKeyword,
-    global: SyntaxKind.GlobalKeyword,
-    return: SyntaxKind.ReturnKeyword,
-    satisfies: SyntaxKind.SatisfiesKeyword,
-    set: SyntaxKind.SetKeyword,
-    static: SyntaxKind.StaticKeyword,
-    string: SyntaxKind.StringKeyword,
-    super: SyntaxKind.SuperKeyword,
-    switch: SyntaxKind.SwitchKeyword,
-    symbol: SyntaxKind.SymbolKeyword,
-    this: SyntaxKind.ThisKeyword,
-    throw: SyntaxKind.ThrowKeyword,
-    true: SyntaxKind.TrueKeyword,
-    try: SyntaxKind.TryKeyword,
-    type: SyntaxKind.TypeKeyword,
-    typeof: SyntaxKind.TypeOfKeyword,
-    undefined: SyntaxKind.UndefinedKeyword,
-    unique: SyntaxKind.UniqueKeyword,
-    unknown: SyntaxKind.UnknownKeyword,
-    using: SyntaxKind.UsingKeyword,
-    var: SyntaxKind.VarKeyword,
-    void: SyntaxKind.VoidKeyword,
-    while: SyntaxKind.WhileKeyword,
-    with: SyntaxKind.WithKeyword,
-    yield: SyntaxKind.YieldKeyword,
-    async: SyntaxKind.AsyncKeyword,
-    await: SyntaxKind.AwaitKeyword,
-    of: SyntaxKind.OfKeyword
-  };
-  var textToKeyword = new Map(Object.entries(textToKeywordObj));
-  var textToToken = new Map(Object.entries({
-    ...textToKeywordObj,
-    "{": SyntaxKind.OpenBraceToken,
-    "}": SyntaxKind.CloseBraceToken,
-    "(": SyntaxKind.OpenParenToken,
-    ")": SyntaxKind.CloseParenToken,
-    "[": SyntaxKind.OpenBracketToken,
-    "]": SyntaxKind.CloseBracketToken,
-    ".": SyntaxKind.DotToken,
-    "...": SyntaxKind.DotDotDotToken,
-    ";": SyntaxKind.SemicolonToken,
-    ",": SyntaxKind.CommaToken,
-    "<": SyntaxKind.LessThanToken,
-    ">": SyntaxKind.GreaterThanToken,
-    "<=": SyntaxKind.LessThanEqualsToken,
-    ">=": SyntaxKind.GreaterThanEqualsToken,
-    "==": SyntaxKind.EqualsEqualsToken,
-    "!=": SyntaxKind.ExclamationEqualsToken,
-    "===": SyntaxKind.EqualsEqualsEqualsToken,
-    "!==": SyntaxKind.ExclamationEqualsEqualsToken,
-    "=>": SyntaxKind.EqualsGreaterThanToken,
-    "+": SyntaxKind.PlusToken,
-    "-": SyntaxKind.MinusToken,
-    "**": SyntaxKind.AsteriskAsteriskToken,
-    "*": SyntaxKind.AsteriskToken,
-    "/": SyntaxKind.SlashToken,
-    "%": SyntaxKind.PercentToken,
-    "++": SyntaxKind.PlusPlusToken,
-    "--": SyntaxKind.MinusMinusToken,
-    "<<": SyntaxKind.LessThanLessThanToken,
-    "</": SyntaxKind.LessThanSlashToken,
-    ">>": SyntaxKind.GreaterThanGreaterThanToken,
-    ">>>": SyntaxKind.GreaterThanGreaterThanGreaterThanToken,
-    "&": SyntaxKind.AmpersandToken,
-    "|": SyntaxKind.BarToken,
-    "^": SyntaxKind.CaretToken,
-    "!": SyntaxKind.ExclamationToken,
-    "~": SyntaxKind.TildeToken,
-    "&&": SyntaxKind.AmpersandAmpersandToken,
-    "||": SyntaxKind.BarBarToken,
-    "?": SyntaxKind.QuestionToken,
-    "??": SyntaxKind.QuestionQuestionToken,
-    "?.": SyntaxKind.QuestionDotToken,
-    ":": SyntaxKind.ColonToken,
-    "=": SyntaxKind.EqualsToken,
-    "+=": SyntaxKind.PlusEqualsToken,
-    "-=": SyntaxKind.MinusEqualsToken,
-    "*=": SyntaxKind.AsteriskEqualsToken,
-    "**=": SyntaxKind.AsteriskAsteriskEqualsToken,
-    "/=": SyntaxKind.SlashEqualsToken,
-    "%=": SyntaxKind.PercentEqualsToken,
-    "<<=": SyntaxKind.LessThanLessThanEqualsToken,
-    ">>=": SyntaxKind.GreaterThanGreaterThanEqualsToken,
-    ">>>=": SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
-    "&=": SyntaxKind.AmpersandEqualsToken,
-    "|=": SyntaxKind.BarEqualsToken,
-    "^=": SyntaxKind.CaretEqualsToken,
-    "||=": SyntaxKind.BarBarEqualsToken,
-    "&&=": SyntaxKind.AmpersandAmpersandEqualsToken,
-    "??=": SyntaxKind.QuestionQuestionEqualsToken,
-    "@": SyntaxKind.AtToken,
-    "#": SyntaxKind.HashToken,
-    "`": SyntaxKind.BacktickToken
-  }));
-  var charCodeToRegExpFlag = /* @__PURE__ */ new Map([
-    [CharacterCodes.d, RegularExpressionFlags.HasIndices],
-    [CharacterCodes.g, RegularExpressionFlags.Global],
-    [CharacterCodes.i, RegularExpressionFlags.IgnoreCase],
-    [CharacterCodes.m, RegularExpressionFlags.Multiline],
-    [CharacterCodes.s, RegularExpressionFlags.DotAll],
-    [CharacterCodes.u, RegularExpressionFlags.Unicode],
-    [CharacterCodes.v, RegularExpressionFlags.UnicodeSets],
-    [CharacterCodes.y, RegularExpressionFlags.Sticky]
-  ]);
-  function makeReverseMap(source4) {
-    const result = [];
-    source4.forEach((value, name) => {
-      result[value] = name;
-    });
-    return result;
-  }
-  var tokenStrings = makeReverseMap(textToToken);
-  function isWhiteSpaceLike(ch) {
-    return isWhiteSpaceSingleLine(ch) || isLineBreak(ch);
-  }
-  function isWhiteSpaceSingleLine(ch) {
-    return ch === CharacterCodes.space || ch === CharacterCodes.tab || ch === CharacterCodes.verticalTab || ch === CharacterCodes.formFeed || ch === CharacterCodes.nonBreakingSpace || ch === CharacterCodes.nextLine || ch === CharacterCodes.ogham || ch >= CharacterCodes.enQuad && ch <= CharacterCodes.zeroWidthSpace || ch === CharacterCodes.narrowNoBreakSpace || ch === CharacterCodes.mathematicalSpace || ch === CharacterCodes.ideographicSpace || ch === CharacterCodes.byteOrderMark;
-  }
-  function isLineBreak(ch) {
-    return ch === CharacterCodes.lineFeed || ch === CharacterCodes.carriageReturn || ch === CharacterCodes.lineSeparator || ch === CharacterCodes.paragraphSeparator;
-  }
-  function skipTrivia(text, pos, stopAfterLineBreak, stopAtComments, inJSDoc) {
-    if (pos < 0) {
-      return pos;
-    }
-    let canConsumeStar = false;
-    while (true) {
-      const ch = text.charCodeAt(pos);
-      switch (ch) {
-        case CharacterCodes.carriageReturn:
-          if (text.charCodeAt(pos + 1) === CharacterCodes.lineFeed) {
-            pos++;
-          }
-        // falls through
-        case CharacterCodes.lineFeed:
-          pos++;
-          if (stopAfterLineBreak) {
-            return pos;
-          }
-          canConsumeStar = !!inJSDoc;
-          continue;
-        case CharacterCodes.tab:
-        case CharacterCodes.verticalTab:
-        case CharacterCodes.formFeed:
-        case CharacterCodes.space:
-          pos++;
-          continue;
-        case CharacterCodes.slash:
-          if (stopAtComments) {
-            break;
-          }
-          if (text.charCodeAt(pos + 1) === CharacterCodes.slash) {
-            pos += 2;
-            while (pos < text.length) {
-              if (isLineBreak(text.charCodeAt(pos))) {
-                break;
-              }
-              pos++;
-            }
-            canConsumeStar = false;
-            continue;
-          }
-          if (text.charCodeAt(pos + 1) === CharacterCodes.asterisk) {
-            pos += 2;
-            while (pos < text.length) {
-              if (text.charCodeAt(pos) === CharacterCodes.asterisk && text.charCodeAt(pos + 1) === CharacterCodes.slash) {
-                pos += 2;
-                break;
-              }
-              pos++;
-            }
-            canConsumeStar = false;
-            continue;
-          }
-          break;
-        case CharacterCodes.lessThan:
-        case CharacterCodes.bar:
-        case CharacterCodes.equals:
-        case CharacterCodes.greaterThan:
-          if (isConflictMarkerTrivia(text, pos)) {
-            pos = scanConflictMarkerTrivia(text, pos);
-            canConsumeStar = false;
-            continue;
-          }
-          break;
-        case CharacterCodes.hash:
-          if (pos === 0 && isShebangTrivia(text, pos)) {
-            pos = scanShebangTrivia(text, pos);
-            continue;
-          }
-          break;
-        case CharacterCodes.asterisk:
-          if (canConsumeStar) {
-            pos++;
-            canConsumeStar = false;
-            continue;
-          }
-          break;
-        default:
-          if (ch > CharacterCodes.maxAsciiCharacter && isWhiteSpaceLike(ch)) {
-            pos++;
-            continue;
-          }
-          break;
-      }
-      return pos;
-    }
-  }
-  function isConflictMarkerTrivia(text, pos) {
-    if (pos >= text.length) {
-      return false;
-    }
-    const ch = text.charCodeAt(pos);
-    if (pos === 0 || isLineBreak(text.charCodeAt(pos - 1))) {
-      if (ch === CharacterCodes.lessThan || ch === CharacterCodes.greaterThan || ch === CharacterCodes.equals) {
-        if (pos + 6 < text.length && text.charCodeAt(pos + 1) === ch && text.charCodeAt(pos + 2) === ch && text.charCodeAt(pos + 3) === ch && text.charCodeAt(pos + 4) === ch && text.charCodeAt(pos + 5) === ch && text.charCodeAt(pos + 6) === ch) {
-          return ch === CharacterCodes.equals || text.charCodeAt(pos + 7) === CharacterCodes.space;
-        }
-      }
-      if (ch === CharacterCodes.bar && pos + 6 < text.length && text.charCodeAt(pos + 1) === ch && text.charCodeAt(pos + 2) === ch && text.charCodeAt(pos + 3) === ch && text.charCodeAt(pos + 4) === ch && text.charCodeAt(pos + 5) === ch && text.charCodeAt(pos + 6) === ch) {
-        return true;
-      }
-    }
-    return false;
-  }
-  function scanConflictMarkerTrivia(text, pos) {
-    const ch = text.charCodeAt(pos);
-    const len = text.length;
-    if (ch === CharacterCodes.lessThan || ch === CharacterCodes.greaterThan) {
-      while (pos < len && !isLineBreak(text.charCodeAt(pos))) {
-        pos++;
-      }
-    } else {
-      pos += 7;
-      while (pos < len) {
-        const currentChar = text.charCodeAt(pos);
-        if ((currentChar === CharacterCodes.equals || currentChar === CharacterCodes.greaterThan) && isConflictMarkerTrivia(text, pos)) {
-          break;
-        }
-        pos++;
-      }
-    }
-    return pos;
-  }
-  function isShebangTrivia(text, pos) {
-    return pos === 0 && text.charCodeAt(0) === CharacterCodes.hash && text.charCodeAt(1) === CharacterCodes.exclamation;
-  }
-  function scanShebangTrivia(text, pos) {
-    pos += 2;
-    while (pos < text.length) {
-      if (isLineBreak(text.charCodeAt(pos))) {
-        break;
-      }
-      pos++;
-    }
-    return pos;
-  }
-
-  // node_modules/typescript/dist/ast/astnav.js
-  function getTokenPosOfNode(node, sourceFile, includeJSDoc) {
-    if (nodeIsMissing(node)) {
-      return node.pos;
-    }
-    if (isJSDocNodeKind(node.kind) || node.kind === SyntaxKind.JsxText) {
-      return skipTrivia(
-        sourceFile.text,
-        node.pos,
-        /*stopAfterLineBreak*/
-        false,
-        /*stopAtComments*/
-        true
+  // src/ts/view/betTable.ts
+  var betTable = class extends Container {
+    table;
+    spin;
+    betnum = [10, 20, 30, 40];
+    betIdexNum = 0;
+    spin_x = 250;
+    spin_y = 415;
+    btnText;
+    betIncrease;
+    betDiscrease;
+    betshow;
+    bet;
+    constructor() {
+      super();
+      this.label = `_Container"betTable`;
+      this.y = 410;
+      this.betTable();
+      this.discreasebetbtn();
+      this.increasebetbtn();
+      this.bet_show();
+      this.spinbtn();
+      getStage().addChild(this);
+    }
+    betTable() {
+      this.table = new Graphics();
+      this.table.label = `_betTable_`;
+      this.table.roundRect(0, 0, 400, 70, 25);
+      this.table.fill("#A02410");
+      this.table.pivot.set(
+        this.table.width / 2,
+        this.table.height / 2
       );
+      this.table.x = globalThis.screen.width / 2;
+      this.table.stroke({
+        width: 3,
+        color: "#D68B23"
+      });
+      this.addChild(this.table);
+      this.resize();
     }
-    if (includeJSDoc && node.jsDoc && node.jsDoc.length > 0) {
-      return getTokenPosOfNode(
-        node.jsDoc[0],
-        sourceFile,
-        /*includeJSDoc*/
-        false
+    spinbtn() {
+      this.spin = new Graphics();
+      this.spin.label = `_spinbtn_`;
+      this.spin.circle(40, 40, 40);
+      this.spin.fill(`#951F0D`);
+      this.spin.stroke({ width: 2, color: "#EAB80D" });
+      this.spin.eventMode = "static";
+      this.spin.cursor = "pointer";
+      this.spin.on(`pointerdown`, () => {
+        if (!getReel5()) {
+          getPlayspin();
+        }
+      });
+      this.spin.pivot.set(
+        this.betIncrease.width / 2,
+        this.spin.height / 2
       );
+      this.spin.position.set(
+        this.spin.x = globalThis.screen.width / 2 + this.spin_x,
+        this.spin.y = globalThis.screen.height / 2 + this.spin_y
+      );
+      this.spinbtnText();
+      getStage().addChild(this.spin);
     }
-    return skipTrivia(
-      sourceFile.text,
-      node.pos,
-      /*stopAfterLineBreak*/
-      false,
-      /*stopAtComments*/
-      false,
-      /*inJSDoc*/
-      !!(node.flags & NodeFlags.JSDoc)
-    );
-  }
-  function nodeIsMissing(node) {
-    return node.pos === node.end && node.pos >= 0 && node.kind !== SyntaxKind.EndOfFile;
-  }
+    bet_show() {
+      this.betshow = new Graphics();
+      this.betshow.label = "_betbox_";
+      this.betshow.roundRect(0, 0, 100, 50, 15);
+      this.betshow.fill(`#901C03`);
+      this.betshow.pivot.set(
+        this.betshow.width / 2,
+        this.betshow.height / 2
+      );
+      this.betshow.position.set(
+        this.table.width / 2,
+        this.table.height / 2
+      );
+      this.betshow.stroke({
+        width: 3,
+        color: "#D68B23"
+      });
+      this.betText(`$${this.betnum[this.betIdexNum]}`);
+      this.table.addChild(this.betshow);
+    }
+    increasebetbtn() {
+      this.betIncrease = new Graphics();
+      this.betIncrease.label = "_increasebetbtn_";
+      this.betIncrease.circle(20, 20, 20);
+      this.betIncrease.fill(`#901C03`);
+      this.betIncrease.pivot.set(
+        this.betIncrease.width / 2,
+        this.betIncrease.height / 2
+      );
+      this.betIncrease.position.set(
+        this.table.width - 30,
+        this.table.height / 2
+      );
+      this.betIncrease.stroke({
+        width: 3,
+        color: "#D68B23"
+      });
+      this.clickEvetIncreaseBtn();
+      this.betIncreeText();
+      this.table.addChild(this.betIncrease);
+    }
+    clickEvetIncreaseBtn() {
+      this.betIncrease.eventMode = "static";
+      this.betIncrease.cursor = "pointer";
+      const onIncreaseBet = () => {
+        if (this.betIdexNum < this.betnum.length - 1) {
+          ++this.betIdexNum;
+          this.betshow.removeChildren();
+          this.betText(`$${this.betnum[this.betIdexNum]}`);
+        } else {
+          this.betIncrease.off("pointerdown", onIncreaseBet);
+        }
+      };
+      this.betIncrease.on("pointerdown", onIncreaseBet);
+    }
+    discreasebetbtn() {
+      this.betDiscrease = new Graphics();
+      this.betDiscrease.label = "_increasethis.betDiscrease_";
+      this.betDiscrease.circle(20, 20, 20);
+      this.betDiscrease.fill(`#901C03`);
+      this.betDiscrease.pivot.set(
+        this.betDiscrease.width / 2,
+        this.betDiscrease.height / 2
+      );
+      this.betDiscrease.position.set(
+        30,
+        this.table.height / 2
+      );
+      this.betDiscrease.stroke({
+        width: 3,
+        color: "#D68B23"
+      });
+      this.clickEvetDiscreaseBtn();
+      this.betDisncreeText();
+      this.table.addChild(this.betDiscrease);
+    }
+    clickEvetDiscreaseBtn() {
+      this.betDiscrease.eventMode = "static";
+      this.betDiscrease.cursor = "pointer";
+      const onDecreaseBet = () => {
+        if (this.betIdexNum > 0) {
+          --this.betIdexNum;
+          this.betshow.removeChildren();
+          this.betText(`$${this.betnum[this.betIdexNum]}`);
+        } else {
+          this.betDiscrease.off("pointerdown", onDecreaseBet);
+        }
+      };
+      this.betDiscrease.on("pointerdown", onDecreaseBet);
+    }
+    spinbtnText() {
+      this.btnText = new Text({
+        text: "SPIN",
+        style: {
+          fontSize: 25,
+          fill: 16777215,
+          fontWeight: "bold"
+        }
+      });
+      this.btnText.anchor.set(0.5);
+      this.btnText.position.set(
+        this.btnText.x = this.spin.width / 2,
+        this.btnText.y = this.spin.height / 2
+      );
+      this.spin.addChild(this.btnText);
+    }
+    betIncreeText() {
+      const btnText = new Text({
+        text: "+",
+        style: {
+          fontSize: 35,
+          fill: 16777215,
+          fontWeight: "bold"
+        }
+      });
+      btnText.anchor.set(0.5);
+      btnText.position.set(
+        this.betIncrease.width / 2,
+        this.betIncrease.height / 2
+      );
+      this.betIncrease.addChild(btnText);
+    }
+    betDisncreeText() {
+      const btnText = new Text({
+        text: "-",
+        style: {
+          fontSize: 35,
+          fill: 16777215,
+          fontWeight: "bold"
+        }
+      });
+      btnText.anchor.set(0.5);
+      btnText.position.set(
+        this.betDiscrease.width / 2,
+        this.betDiscrease.height / 2
+      );
+      this.betDiscrease.addChild(btnText);
+    }
+    betText(text) {
+      this.bet = new Text({
+        text,
+        style: {
+          fontSize: 35,
+          fill: 16777215
+        }
+      });
+      this.bet.anchor.set(0.5);
+      this.bet.position.set(
+        this.betshow.width / 2,
+        this.betshow.height / 2
+      );
+      this.betshow.addChild(this.bet);
+    }
+    resize() {
+      this.table.x = innerWidth / 2;
+      this.table.y = innerHeight / 2;
+    }
+    modifertext(text) {
+      this.btnText.text = text;
+    }
+  };
 
   // src/ts/game.ts
   var bg;
-  var spinBtn;
   var Sound2;
+  var btTable;
   var reel1;
   var reel2;
   var reel3;
@@ -53141,6 +49963,7 @@ ${e2}`);
   async function gameInit() {
     Sound2 = new SoundManager();
     bg = new background();
+    btTable = new betTable();
     await loadAssets();
     reel1 = new Reel(1);
     reel1.getmask(-350.5);
@@ -53157,20 +49980,6 @@ ${e2}`);
     reel5 = new Reel(5);
     reel5.getmask(268.55);
     reel5.x = 327;
-    spinBtn = document.getElementById("spineBtn");
-    spinBtn.addEventListener(`click`, () => {
-      Sound2.clickSound.play();
-      if (!reel5.getReelState()) {
-        Sound2.spinSound.play();
-        reel1.playReelSpin();
-        reel2.playReelSpin();
-        reel3.playReelSpin();
-        reel4.playReelSpin();
-        reel5.playReelSpin();
-      } else {
-        spinBtn.innerHTML = "SPIN";
-      }
-    });
   }
   var getSoundManager = () => {
     return Sound2;
@@ -53178,8 +49987,18 @@ ${e2}`);
   var getBg = () => {
     return bg;
   };
-  var getSpinBtn = () => {
-    return spinBtn;
+  var getPlayspin = () => {
+    reel1.playReelSpin();
+    reel2.playReelSpin();
+    reel3.playReelSpin();
+    reel4.playReelSpin();
+    reel5.playReelSpin();
+  };
+  var getReel5 = () => {
+    return reel5.getReelState();
+  };
+  var changeBtnText = (text) => {
+    btTable.modifertext(text);
   };
 
   // src/ts/index.ts

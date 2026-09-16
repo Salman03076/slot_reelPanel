@@ -3,7 +3,7 @@
   "compilerOptions": {
     // File Layout
     "rootDir": "./src/ts",
-    "outDir": "./docs/js",
+    "outDir": "./docs",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module

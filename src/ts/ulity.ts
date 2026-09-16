@@ -28,6 +28,23 @@ const loadTexture = async (textureName: string, textureURL: string) => {
   return assetsMap[`${textureName}`];
 };
 
+
+export const soundPlayLogo = async (): Promise<Texture> => {
+  const soundUrl: string = "assets/sound_logo/volume.png"
+  const soundtexture = await Assets.load(soundUrl)
+  return soundtexture;
+
+};
+
+
+
+export const soundMuteLogo = async (): Promise<Texture> => {
+  const soundUrl: string = "assets/sound_logo/enable-sound.png"
+  const soundtexture = await Assets.load(soundUrl)
+  return soundtexture;
+};
+
+
 export const assetMap: Texture[] = [];
 
 const assets = [

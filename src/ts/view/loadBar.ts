@@ -22,7 +22,7 @@ export function calculatepercetage() {
   if (percentage === 100) {
     loadBar.style.display = "none";
     loadBackground.style.display = "none";
-    spinbtn.style.display = "block";
+    // spinbtn.style.display = "block";
     getSoundManager().backgroundSound.play();
   }
   console.log(`Assets loaded: ${percentage}%`);

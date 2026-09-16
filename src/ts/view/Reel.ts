@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite, Ticker, BlurFilter } from "pixi.js";
 import { assetMap } from "../ulity.js";
-import { getBg, getSoundManager, getSpinBtn } from "../game.js";
+import { changeBtnText, getBg, getSoundManager, getSpinBtn } from "../game.js";
 
 // creat the reelPanel\
 export class Reel extends Container {
@@ -77,38 +77,38 @@ export class Reel extends Container {
 
   // Reel Spin Animation
   private reelSpin(): void {
-        const totalSymbolsHeight = getBg().getReelPanleHeight();
-        for (let num = 0; num < this.Symbols.length; num++) {
-            let symbols = this.Symbols[num];
-            symbols.y += this.spinSpeed;
-            console.log(symbols.y);
-            if (symbols.y > totalSymbolsHeight) {
-                symbols.y = symbols.y - totalSymbolsHeight - 200;
-            }
-        }
+    const totalSymbolsHeight = getBg().getReelPanleHeight();
+    for (let num = 0; num < this.Symbols.length; num++) {
+      let symbols = this.Symbols[num];
+      symbols.y += this.spinSpeed;
+      console.log(symbols.y);
+      if (symbols.y > totalSymbolsHeight) {
+        symbols.y = symbols.y - totalSymbolsHeight - 200;
+      }
     }
+  }
 
   private spinboundle = this.reelSpin.bind(this);
 
   // Play spin
-   public playReelSpin() {
-        if (this.isSpining) return;
-        this.isSpining = true;
-        this.bounceanimation();
-        setTimeout(() => {
-            getSpinBtn().innerHTML = "STOP";
-            Ticker.shared.add(this.spinboundle);
-            this.blurSymbols(1);
-        }, 50 * this.reelId);
-        setTimeout(() => {
-            this.stopReelSpin();
-            this.blurSymbols(0);
-            if (this.reelId == 5) {
-                getSoundManager().spinSound.stop();
-                getSpinBtn().innerHTML = "SPIN";
-            }
-        }, 700 * this.reelId);
-    }
+  public playReelSpin() {
+    if (this.isSpining) return;
+    this.isSpining = true;
+    this.bounceanimation();
+    setTimeout(() => {
+      changeBtnText("STOP");
+      Ticker.shared.add(this.spinboundle);
+      this.blurSymbols(1);
+    }, 50 * this.reelId);
+    setTimeout(() => {
+      this.stopReelSpin();
+      this.blurSymbols(0);
+      if (this.reelId == 5) {
+        getSoundManager().spinSound.stop();
+        changeBtnText("SPIN")
+      }
+    }, 700 * this.reelId);
+  }
 
   // stop spin
   public stopReelSpin(): void {
@@ -128,12 +128,12 @@ export class Reel extends Container {
     }, 10);
   }
 
- // create the masking for symbol Area
+  // create the masking for symbol Area
   private reelmask(Positionx?: number) {
     const mask = new Graphics();
     mask.label = "symbolsMask";
 
-    mask.rect(Positionx,-219, 120, 515);
+    mask.rect(Positionx, -219, 120, 515);
 
     mask.fill(0xffffff);
 

@@ -7,7 +7,7 @@ import { betTable } from "./view/betTable.js";
 let bg: background;
 let spinBtn: HTMLButtonElement;
 let Sound: SoundManager;
-// let btTable: betTable;
+let btTable: betTable;
 let reel1: Reel;
 let reel2: Reel;
 let reel3: Reel;
@@ -20,7 +20,7 @@ export async function gameInit(): Promise<void> {
 
     bg = new background();
 
-    // btTable = new betTable()
+    btTable = new betTable()
 
     await loadAssets();
 
@@ -39,23 +39,6 @@ export async function gameInit(): Promise<void> {
     reel5 = new Reel(5);
     reel5.getmask(268.55);
     reel5.x = 327;
-    // reel2.position.set(250,0);
-
-    spinBtn = document.getElementById("spineBtn") as HTMLButtonElement;
-
-    spinBtn.addEventListener(`click`, () => {
-        Sound.clickSound.play();
-        if (!reel5.getReelState()) {
-            Sound.spinSound.play();
-            reel1.playReelSpin();
-            reel2.playReelSpin();
-            reel3.playReelSpin();
-            reel4.playReelSpin();
-            reel5.playReelSpin();
-        } else {
-            spinBtn.innerHTML = "SPIN";
-        }
-    });
 }
 
 export const getSoundManager = () => {
@@ -70,10 +53,18 @@ export const getSpinBtn = () => {
     return spinBtn;
 };
 
-export const getPlayspin = () => {
+export const getPlayspin = (): void => {
     reel1.playReelSpin();
     reel2.playReelSpin();
     reel3.playReelSpin();
     reel4.playReelSpin();
     reel5.playReelSpin();
+};
+
+export const getReel5 = () => {
+    return reel5.getReelState();
+}
+
+export const changeBtnText = (text: string): void => {
+    btTable.modifertext(text);
 };
