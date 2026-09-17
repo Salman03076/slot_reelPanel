@@ -7,13 +7,12 @@ import { betTable } from "./view/betTable.js";
 let bg: background;
 let spinBtn: HTMLButtonElement;
 let Sound: SoundManager;
-let btTable: betTable;
+// let btTable: betTable;
 let reel1: Reel;
 let reel2: Reel;
 let reel3: Reel;
 let reel4: Reel;
 let reel5: Reel;
-
 
 // all file initialization
 export async function gameInit(): Promise<void> {
@@ -21,7 +20,7 @@ export async function gameInit(): Promise<void> {
 
     bg = new background();
 
-    btTable = new betTable()
+    // btTable = new betTable()
 
     await loadAssets();
 
@@ -29,7 +28,7 @@ export async function gameInit(): Promise<void> {
     reel1.getmask(-350.5);
     reel1.x = -293;
     reel2 = new Reel(2);
-    reel2.getmask(-202.5);
+    reel2.getmask(-184.5);
     reel2.x = -132;
     reel3 = new Reel(3);
     reel3.getmask(-41.5);
@@ -77,4 +76,4 @@ export const getPlayspin = () => {
     reel3.playReelSpin();
     reel4.playReelSpin();
     reel5.playReelSpin();
-}
+};
