@@ -1,14 +1,14 @@
 import { Container, Graphics, Text } from "pixi.js";
 import { getStage } from "../index.js";
-import { getPlayspin, getReel5, } from "../game.js";
+import { getPlayspin, getReel5, getSoundManager, } from "../game.js";
 
 export class betTable extends Container {
     private table: Graphics;
     private spin: Graphics;
     private betnum: number[] = [10, 20, 30, 40]
     private betIdexNum: number = 0;
-    private spin_x = 250;
-    private spin_y = 415;
+    private spin_x = 350;
+    private spin_y = 410;
     private btnText: Text;
     private betIncrease: Graphics;
     private betDiscrease: Graphics;
@@ -19,7 +19,7 @@ export class betTable extends Container {
     constructor() {
         super();
         this.label = `_Container"betTable`;
-        this.y = 410;
+        this.y = 417;
         this.betTable();
         this.discreasebetbtn();
         this.increasebetbtn();
@@ -69,13 +69,13 @@ export class betTable extends Container {
         });
 
         this.spin.pivot.set(
-            this.betIncrease.width / 2,
+            this.spin.width / 2,
             this.spin.height / 2
         );
 
         this.spin.position.set(
-            this.spin.x = (globalThis.screen.width / 2) + this.spin_x,
-            this.spin.y = (globalThis.screen.height / 2) + this.spin_y
+            (globalThis.screen.width / 2) + this.spin_x,
+            (globalThis.screen.height / 2) + this.spin_y
         );
         this.spinbtnText();
         getStage().addChild(this.spin);
@@ -140,16 +140,18 @@ export class betTable extends Container {
         this.betIncrease.eventMode = "static"
         this.betIncrease.cursor = "pointer";
         const onIncreaseBet = () => {
+            getSoundManager().clickSound.play();
             if (this.betIdexNum < this.betnum.length - 1) {
                 ++this.betIdexNum;
                 this.betshow.removeChildren();
                 this.betText(`$${this.betnum[this.betIdexNum]}`);
             } else {
-                this.betIncrease.off("pointerdown", onIncreaseBet);
+                // this.betIncrease.off("pointerdown", onIncreaseBet);
             }
         };
 
         this.betIncrease.on("pointerdown", onIncreaseBet);
+
     }
 
 
@@ -188,11 +190,12 @@ export class betTable extends Container {
         this.betDiscrease.cursor = "pointer";
         const onDecreaseBet = () => {
             if (this.betIdexNum > 0) {
+                getSoundManager().clickSound.play();
                 --this.betIdexNum;
                 this.betshow.removeChildren();
                 this.betText(`$${this.betnum[this.betIdexNum]}`);
             } else {
-                this.betDiscrease.off("pointerdown", onDecreaseBet);
+                // this.betDiscrease.off("pointerdown", onDecreaseBet);
             }
         };
         this.betDiscrease.on("pointerdown", onDecreaseBet);

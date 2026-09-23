@@ -54,6 +54,7 @@ export const getSpinBtn = () => {
 };
 
 export const getPlayspin = (): void => {
+    Sound.spinSound.play();
     reel1.playReelSpin();
     reel2.playReelSpin();
     reel3.playReelSpin();

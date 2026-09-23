@@ -6,6 +6,12 @@ import { getStage } from "./index.js";
 // Game Sound initialization
 export class SoundManager {
   private soundbtn: Sprite;
+  private isMuted = false;
+  private playSprite!: Sprite;
+  private muteSprite!: Sprite;
+  private soundBtn_x: number = 350;
+  private soundBtn_y: number = 420;
+
 
   private audioPaths = {
     background: "assets/audio/background.mp3",
@@ -16,9 +22,6 @@ export class SoundManager {
     bigWin: "assets/audio/bigWin.mp3",
   };
 
-  private isMuted = false;
-  private playSprite!: Sprite;
-  private muteSprite!: Sprite;
 
   constructor() {
     Howler.autoUnlock = true;
@@ -58,16 +61,19 @@ export class SoundManager {
   private async createSoundBtn(): Promise<void> {
     this.soundbtn = new Sprite();
     this.soundbtn.label = `_soundBtn_`;
-    this.soundbtn.x = globalThis.screen.width / 2 - 400;
-    this.soundbtn.y = globalThis.screen.height - 90;
+    this.soundbtn.x = (globalThis.screen.width / 2) - this.soundBtn_x;
+    this.soundbtn.y = (globalThis.screen.height / 2) + this.soundBtn_y;
 
     const texture1 = await soundPlayLogo();
-    this.playSprite = new Sprite(texture1)
+    this.playSprite = new Sprite(texture1);
+    this.playSprite.anchor.set(0.5);
     this.playSprite.width = 80;
     this.playSprite.height = 80;
 
     const texture2 = await soundMuteLogo();
     this.muteSprite = new Sprite(texture2);
+    this.muteSprite.anchor.set(0.5);
+
     this.muteSprite.width = 80;
     this.muteSprite.height = 80;
 
@@ -82,6 +88,7 @@ export class SoundManager {
     this.soundbtn.eventMode = "static";
     this.soundbtn.cursor = "pointer";
     this.soundbtn.on("pointerdown", () => {
+      this.clickSound.play();
       this.isMuted = !this.isMuted;
       Howler.mute(this.isMuted);
 

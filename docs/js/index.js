@@ -49366,6 +49366,7 @@ ${e2}`);
   var loadBar;
   var load;
   var spinbtn;
+  var continoueBtn;
   function calculatepercetage() {
     const totalAssets = 13;
     const percentage = Math.floor(countLoadAsset / totalAssets * 100);
@@ -49375,14 +49376,19 @@ ${e2}`);
     loadBar = document.getElementById("loadBar");
     load = document.getElementById("load");
     spinbtn = document.getElementById("spineBtn");
+    continoueBtn = document.getElementById("continoueBtn");
     load.style.backgroundColor = "#B50000";
     load.style.width = `${percentage}%`;
     if (percentage === 100) {
+      continoueBtn.style.visibility = "visible";
       loadBar.style.display = "none";
-      loadBackground.style.display = "none";
       getSoundManager().backgroundSound.play();
     }
     console.log(`Assets loaded: ${percentage}%`);
+    continoueBtn.addEventListener("click", () => {
+      continoueBtn.style.visibility = "hidden";
+      loadBackground.style.display = "none";
+    });
   }
 
   // src/ts/ulity.ts
@@ -49413,7 +49419,7 @@ ${e2}`);
     return soundtexture;
   };
   var soundMuteLogo = async () => {
-    const soundUrl = "assets/sound_logo/enable-sound.png";
+    const soundUrl = "assets/sound_logo/enable-sound (1).png";
     const soundtexture = await Assets.load(soundUrl);
     return soundtexture;
   };
@@ -49657,6 +49663,11 @@ ${e2}`);
   var import_howler = __toESM(require_howler(), 1);
   var SoundManager = class {
     soundbtn;
+    isMuted = false;
+    playSprite;
+    muteSprite;
+    soundBtn_x = 350;
+    soundBtn_y = 420;
     audioPaths = {
       background: "assets/audio/background.mp3",
       click: "assets/audio/click.mp3",
@@ -49665,9 +49676,6 @@ ${e2}`);
       win: "assets/audio/win.mp3",
       bigWin: "assets/audio/bigWin.mp3"
     };
-    isMuted = false;
-    playSprite;
-    muteSprite;
     constructor() {
       import_howler.Howler.autoUnlock = true;
       this.createSoundBtn();
@@ -49698,14 +49706,16 @@ ${e2}`);
     async createSoundBtn() {
       this.soundbtn = new Sprite();
       this.soundbtn.label = `_soundBtn_`;
-      this.soundbtn.x = globalThis.screen.width / 2 - 400;
-      this.soundbtn.y = globalThis.screen.height - 90;
+      this.soundbtn.x = globalThis.screen.width / 2 - this.soundBtn_x;
+      this.soundbtn.y = globalThis.screen.height / 2 + this.soundBtn_y;
       const texture1 = await soundPlayLogo();
       this.playSprite = new Sprite(texture1);
+      this.playSprite.anchor.set(0.5);
       this.playSprite.width = 80;
       this.playSprite.height = 80;
       const texture2 = await soundMuteLogo();
       this.muteSprite = new Sprite(texture2);
+      this.muteSprite.anchor.set(0.5);
       this.muteSprite.width = 80;
       this.muteSprite.height = 80;
       this.soundbtn.addChild(this.playSprite);
@@ -49716,6 +49726,7 @@ ${e2}`);
       this.soundbtn.eventMode = "static";
       this.soundbtn.cursor = "pointer";
       this.soundbtn.on("pointerdown", () => {
+        this.clickSound.play();
         this.isMuted = !this.isMuted;
         import_howler.Howler.mute(this.isMuted);
         this.soundbtn.removeChildren();
@@ -49730,8 +49741,8 @@ ${e2}`);
     spin;
     betnum = [10, 20, 30, 40];
     betIdexNum = 0;
-    spin_x = 250;
-    spin_y = 415;
+    spin_x = 350;
+    spin_y = 410;
     btnText;
     betIncrease;
     betDiscrease;
@@ -49740,7 +49751,7 @@ ${e2}`);
     constructor() {
       super();
       this.label = `_Container"betTable`;
-      this.y = 410;
+      this.y = 417;
       this.betTable();
       this.discreasebetbtn();
       this.increasebetbtn();
@@ -49779,12 +49790,12 @@ ${e2}`);
         }
       });
       this.spin.pivot.set(
-        this.betIncrease.width / 2,
+        this.spin.width / 2,
         this.spin.height / 2
       );
       this.spin.position.set(
-        this.spin.x = globalThis.screen.width / 2 + this.spin_x,
-        this.spin.y = globalThis.screen.height / 2 + this.spin_y
+        globalThis.screen.width / 2 + this.spin_x,
+        globalThis.screen.height / 2 + this.spin_y
       );
       this.spinbtnText();
       getStage().addChild(this.spin);
@@ -49834,12 +49845,12 @@ ${e2}`);
       this.betIncrease.eventMode = "static";
       this.betIncrease.cursor = "pointer";
       const onIncreaseBet = () => {
+        getSoundManager().clickSound.play();
         if (this.betIdexNum < this.betnum.length - 1) {
           ++this.betIdexNum;
           this.betshow.removeChildren();
           this.betText(`$${this.betnum[this.betIdexNum]}`);
         } else {
-          this.betIncrease.off("pointerdown", onIncreaseBet);
         }
       };
       this.betIncrease.on("pointerdown", onIncreaseBet);
@@ -49870,11 +49881,11 @@ ${e2}`);
       this.betDiscrease.cursor = "pointer";
       const onDecreaseBet = () => {
         if (this.betIdexNum > 0) {
+          getSoundManager().clickSound.play();
           --this.betIdexNum;
           this.betshow.removeChildren();
           this.betText(`$${this.betnum[this.betIdexNum]}`);
         } else {
-          this.betDiscrease.off("pointerdown", onDecreaseBet);
         }
       };
       this.betDiscrease.on("pointerdown", onDecreaseBet);
@@ -49988,6 +49999,7 @@ ${e2}`);
     return bg;
   };
   var getPlayspin = () => {
+    Sound2.spinSound.play();
     reel1.playReelSpin();
     reel2.playReelSpin();
     reel3.playReelSpin();

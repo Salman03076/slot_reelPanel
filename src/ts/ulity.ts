@@ -39,7 +39,7 @@ export const soundPlayLogo = async (): Promise<Texture> => {
 
 
 export const soundMuteLogo = async (): Promise<Texture> => {
-  const soundUrl: string = "assets/sound_logo/enable-sound.png"
+  const soundUrl: string = "assets/sound_logo/enable-sound (1).png"
   const soundtexture = await Assets.load(soundUrl)
   return soundtexture;
 };
