@@ -5,7 +5,7 @@ import { changeBtnText, getBg, getSoundManager } from "../game.js";
 // creat the reelPanel\
 export class Reel extends Container {
   private isSpining: boolean = false;
-  private spinSpeed: number = 30;
+  private spinSpeed: number = 20;
   private Symbols: Sprite[] = [];
   private reelId: number;
   private stopReelAnimation;
@@ -96,11 +96,14 @@ export class Reel extends Container {
     this.isSpining = true;
     setTimeout(() => {
       changeBtnText("STOP");
+      this.BounceupReel()
       Ticker.shared.add(this.spinboundle);
       this.blurSymbols(1);
     }, 50 * this.reelId);
     setTimeout(() => {
       this.stopReelSpin();
+      // this.BouncedownReel()
+      this.BouncedownReel()
       this.blurSymbols(0);
       if (this.reelId == 5) {
         getSoundManager().spinSound.stop();
@@ -152,20 +155,34 @@ export class Reel extends Container {
     }
   }
 
+  private BounceupReel() {
+    const curretY = 90;
+    this.y -= curretY;
+  }
+
+
+  private BouncedownReel() {
+    const curretY = 150;
+    this.y += curretY;
+  }
+
+
   private checkPosition() {
     // Check all symbols
     for (let index = 0; index < this.Symbols.length; index++) {
       const currentY = this.Symbols[index].y;
+      this.y = -160.5;
 
       if (currentY == 0 || currentY == 200 || currentY == 400) {
         clearInterval(this.stopReelAnimation);
 
         Ticker.shared.remove(this.spinboundle);
-        this.spinSpeed = 30;
+        this.spinSpeed = 20;
         // console.log("Reel stopped at:", currentY);
+        // this.y = -160.5;
         break;
       } else {
-        this.spinSpeed = 30;
+        this.spinSpeed = 20;
       }
     }
   }

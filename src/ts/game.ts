@@ -66,11 +66,11 @@ export const getPlayspin = (): void => {
   reel5.playReelSpin();
 };
 export const getReel1 = () => {
-  return reel1.getReelState();
+  return reel1?.getReelState?.();
 };
 
 export const getReel5 = () => {
-  return reel5.getReelState();
+  return reel5?.getReelState?.();
 };
 
 

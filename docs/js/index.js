@@ -49451,7 +49451,7 @@ ${e2}`);
   // src/ts/view/Reel.ts
   var Reel = class extends Container {
     isSpining = false;
-    spinSpeed = 30;
+    spinSpeed = 20;
     Symbols = [];
     reelId;
     stopReelAnimation;
@@ -49528,11 +49528,13 @@ ${e2}`);
       this.isSpining = true;
       setTimeout(() => {
         changeBtnText("STOP");
+        this.BounceupReel();
         Ticker.shared.add(this.spinboundle);
         this.blurSymbols(1);
       }, 50 * this.reelId);
       setTimeout(() => {
         this.stopReelSpin();
+        this.BouncedownReel();
         this.blurSymbols(0);
         if (this.reelId == 5) {
           getSoundManager().spinSound.stop();
@@ -49574,16 +49576,25 @@ ${e2}`);
         ];
       }
     }
+    BounceupReel() {
+      const curretY = 90;
+      this.y -= curretY;
+    }
+    BouncedownReel() {
+      const curretY = 100;
+      this.y += curretY;
+    }
     checkPosition() {
       for (let index = 0; index < this.Symbols.length; index++) {
         const currentY = this.Symbols[index].y;
+        this.y = -160.5;
         if (currentY == 0 || currentY == 200 || currentY == 400) {
           clearInterval(this.stopReelAnimation);
           Ticker.shared.remove(this.spinboundle);
-          this.spinSpeed = 30;
+          this.spinSpeed = 20;
           break;
         } else {
-          this.spinSpeed = 30;
+          this.spinSpeed = 20;
         }
       }
     }
@@ -50000,10 +50011,10 @@ ${e2}`);
     reel5.playReelSpin();
   };
   var getReel1 = () => {
-    return reel1.getReelState();
+    return reel1?.getReelState?.();
   };
   var getReel5 = () => {
-    return reel5.getReelState();
+    return reel5?.getReelState?.();
   };
   var changeBtnText = (text) => {
     btTable.modifertext(text);
