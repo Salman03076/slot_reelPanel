@@ -51,6 +51,8 @@ export class background {
   private manageGameSize() {
     this.reelContainer.x = innerWidth / 2;
     this.reelContainer.y = innerHeight / 2;
+    this.reelBackgrondSprite.height = innerHeight;
+    this.reelBackgrondSprite.width = innerWidth;
   }
 
   public getBgSprite() {

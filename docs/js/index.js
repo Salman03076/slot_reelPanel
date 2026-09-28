@@ -49366,9 +49366,9 @@ ${e2}`);
   var loadBar;
   var load;
   var spinbtn;
-  var continoueBtn;
+  var playBtn;
   function calculatepercetage() {
-    const totalAssets = 13;
+    const totalAssets = 15;
     const percentage = Math.floor(countLoadAsset / totalAssets * 100);
     loadBackground = document.getElementById(
       "loadBackground"
@@ -49376,17 +49376,16 @@ ${e2}`);
     loadBar = document.getElementById("loadBar");
     load = document.getElementById("load");
     spinbtn = document.getElementById("spineBtn");
-    continoueBtn = document.getElementById("continoueBtn");
+    playBtn = document.getElementById("continoueBtn");
     load.style.backgroundColor = "#B50000";
     load.style.width = `${percentage}%`;
     if (percentage === 100) {
-      continoueBtn.style.visibility = "visible";
+      playBtn.style.visibility = "visible";
       loadBar.style.display = "none";
       getSoundManager().backgroundSound.play();
     }
-    console.log(`Assets loaded: ${percentage}%`);
-    continoueBtn.addEventListener("click", () => {
-      continoueBtn.style.visibility = "hidden";
+    playBtn.addEventListener("click", () => {
+      playBtn.style.visibility = "hidden";
       loadBackground.style.display = "none";
     });
   }
@@ -49395,7 +49394,6 @@ ${e2}`);
   var countLoadAsset = 0;
   var assetsMap = [];
   var reelbackground = async () => {
-    console.log("reelPanelload");
     return await loadTexture(
       `reelPanelbg`,
       `assets/reelContainerimage/background.png`
@@ -49414,13 +49412,17 @@ ${e2}`);
     return assetsMap[`${textureName}`];
   };
   var soundPlayLogo = async () => {
-    const soundUrl = "assets/sound_logo/volume.png";
+    const soundUrl = "assets/sound_logo/soundBtn_logo_play.png";
     const soundtexture = await Assets.load(soundUrl);
+    countLoadAsset++;
+    calculatepercetage();
     return soundtexture;
   };
   var soundMuteLogo = async () => {
-    const soundUrl = "assets/sound_logo/enable-sound (1).png";
+    const soundUrl = "assets/sound_logo/soundBtn_logo_mute.png";
     const soundtexture = await Assets.load(soundUrl);
+    countLoadAsset++;
+    calculatepercetage();
     return soundtexture;
   };
   var assetMap = [];
@@ -49444,7 +49446,6 @@ ${e2}`);
       countLoadAsset++;
       calculatepercetage();
     }
-    console.log(countLoadAsset);
   }
 
   // src/ts/view/Reel.ts
@@ -49515,7 +49516,6 @@ ${e2}`);
       for (let num = 0; num < this.Symbols.length; num++) {
         let symbols = this.Symbols[num];
         symbols.y += this.spinSpeed;
-        console.log(symbols.y);
         if (symbols.y > totalSymbolsHeight) {
           symbols.y = symbols.y - totalSymbolsHeight - 200;
         }
@@ -49526,7 +49526,6 @@ ${e2}`);
     playReelSpin() {
       if (this.isSpining) return;
       this.isSpining = true;
-      this.bounceanimation();
       setTimeout(() => {
         changeBtnText("STOP");
         Ticker.shared.add(this.spinboundle);
@@ -49559,7 +49558,7 @@ ${e2}`);
     reelmask(Positionx) {
       const mask = new Graphics();
       mask.label = "symbolsMask";
-      mask.rect(Positionx, -219, 120, 515);
+      mask.rect(Positionx, -219, 125, 515);
       mask.fill(16777215);
       this.mask = mask;
       getBg().getBgCtr().addChild(mask);
@@ -49578,21 +49577,14 @@ ${e2}`);
     checkPosition() {
       for (let index = 0; index < this.Symbols.length; index++) {
         const currentY = this.Symbols[index].y;
-        if (currentY == 0 || currentY == 150 || currentY == 300) {
+        if (currentY == 0 || currentY == 200 || currentY == 400) {
           clearInterval(this.stopReelAnimation);
           Ticker.shared.remove(this.spinboundle);
           this.spinSpeed = 30;
-          console.log("Reel stopped at:", currentY);
           break;
         } else {
           this.spinSpeed = 30;
         }
-      }
-    }
-    bounceanimation() {
-      for (let num = 0; num < this.Symbols.length; num++) {
-        let symbols = this.Symbols[num];
-        symbols.y -= 30;
       }
     }
     getmask(x2) {
@@ -49647,6 +49639,8 @@ ${e2}`);
     manageGameSize() {
       this.reelContainer.x = innerWidth / 2;
       this.reelContainer.y = innerHeight / 2;
+      this.reelBackgrondSprite.height = innerHeight;
+      this.reelBackgrondSprite.width = innerWidth;
     }
     getBgSprite() {
       return this.reelBackgrondSprite;
@@ -49666,8 +49660,7 @@ ${e2}`);
     isMuted = false;
     playSprite;
     muteSprite;
-    soundBtn_x = 350;
-    soundBtn_y = 420;
+    soundBtn_x = -200;
     audioPaths = {
       background: "assets/audio/background.mp3",
       click: "assets/audio/click.mp3",
@@ -49706,8 +49699,7 @@ ${e2}`);
     async createSoundBtn() {
       this.soundbtn = new Sprite();
       this.soundbtn.label = `_soundBtn_`;
-      this.soundbtn.x = globalThis.screen.width / 2 - this.soundBtn_x;
-      this.soundbtn.y = globalThis.screen.height / 2 + this.soundBtn_y;
+      this.soundbtn.x = this.soundBtn_x;
       const texture1 = await soundPlayLogo();
       this.playSprite = new Sprite(texture1);
       this.playSprite.anchor.set(0.5);
@@ -49719,7 +49711,7 @@ ${e2}`);
       this.muteSprite.width = 80;
       this.muteSprite.height = 80;
       this.soundbtn.addChild(this.playSprite);
-      getStage().addChild(this.soundbtn);
+      getButtonPanel().addChild(this.soundbtn);
       this.checkstatuSound();
     }
     checkstatuSound() {
@@ -49730,96 +49722,92 @@ ${e2}`);
         this.isMuted = !this.isMuted;
         import_howler.Howler.mute(this.isMuted);
         this.soundbtn.removeChildren();
-        this.soundbtn.addChild(this.isMuted ? this.muteSprite : this.playSprite);
+        const activeIcon = this.isMuted ? this.muteSprite : this.playSprite;
+        this.soundbtn.addChild(activeIcon);
       });
     }
   };
 
   // src/ts/view/betTable.ts
-  var betTable = class extends Container {
+  var betTable = class {
+    btnPanel = new Container();
     table;
     spin;
-    betnum = [10, 20, 30, 40];
+    betnum = [10, 15, 20, 30, 40, 150, 175, 200];
     betIdexNum = 0;
-    spin_x = 350;
-    spin_y = 410;
+    spin_x = 0;
+    btnPanel_y = 890;
+    table_x = 200;
     btnText;
     betIncrease;
     betDiscrease;
     betshow;
     bet;
     constructor() {
-      super();
-      this.label = `_Container"betTable`;
-      this.y = 417;
+      this.btnPanel.label = `_Containver"buttonPanle"`;
+      addEventListener(`resize`, this.resizeBtnPanle.bind(this));
       this.betTable();
       this.discreasebetbtn();
       this.increasebetbtn();
       this.bet_show();
       this.spinbtn();
-      getStage().addChild(this);
+      getStage().addChild(this.table);
+      this.btnPanel.addChild(this.table);
+      getStage().addChild(this.btnPanel);
+      this.resizeBtnPanle();
+      this.btnPanel.y = this.btnPanel_y;
     }
+    //create bet  table
     betTable() {
       this.table = new Graphics();
       this.table.label = `_betTable_`;
-      this.table.roundRect(0, 0, 400, 70, 25);
+      this.table.x = this.table_x;
+      this.table.roundRect(0, 0, 200, 60, 25);
       this.table.fill("#A02410");
-      this.table.pivot.set(
-        this.table.width / 2,
-        this.table.height / 2
-      );
-      this.table.x = globalThis.screen.width / 2;
+      this.table.pivot.set(this.table.width / 2, this.table.height / 2);
       this.table.stroke({
         width: 3,
         color: "#D68B23"
       });
-      this.addChild(this.table);
-      this.resize();
+      this.btnPanel.addChild(this.table);
     }
+    //  create  reel spin button
     spinbtn() {
       this.spin = new Graphics();
       this.spin.label = `_spinbtn_`;
+      this.spin.height = 100;
+      this.spin.width = 100;
       this.spin.circle(40, 40, 40);
       this.spin.fill(`#951F0D`);
       this.spin.stroke({ width: 2, color: "#EAB80D" });
       this.spin.eventMode = "static";
       this.spin.cursor = "pointer";
-      this.spin.on(`pointerdown`, () => {
+      const onSpin = () => {
         if (!getReel5()) {
           getPlayspin();
         }
-      });
-      this.spin.pivot.set(
-        this.spin.width / 2,
-        this.spin.height / 2
-      );
-      this.spin.position.set(
-        globalThis.screen.width / 2 + this.spin_x,
-        globalThis.screen.height / 2 + this.spin_y
-      );
+      };
+      this.spin.on(`pointerdown`, onSpin);
+      setInterval(() => {
+        if (getReel1() || getReel5()) {
+          this.spin.off(`pointerdown`, onSpin);
+        } else this.spin.on(`pointerdown`, onSpin);
+      }, 10);
+      this.spin.pivot.set(this.spin.width / 2, this.spin.height / 2);
       this.spinbtnText();
-      getStage().addChild(this.spin);
+      this.btnPanel.addChild(this.spin);
     }
+    // show the bet number
     bet_show() {
       this.betshow = new Graphics();
-      this.betshow.label = "_betbox_";
+      this.betshow.label = "_betShow_";
       this.betshow.roundRect(0, 0, 100, 50, 15);
-      this.betshow.fill(`#901C03`);
-      this.betshow.pivot.set(
-        this.betshow.width / 2,
-        this.betshow.height / 2
-      );
-      this.betshow.position.set(
-        this.table.width / 2,
-        this.table.height / 2
-      );
-      this.betshow.stroke({
-        width: 3,
-        color: "#D68B23"
-      });
+      this.betshow.pivot.set(this.betshow.width / 2, this.betshow.height / 2);
+      this.betshow.position.set(this.table.width / 2, this.table.height / 2);
       this.betText(`$${this.betnum[this.betIdexNum]}`);
       this.table.addChild(this.betshow);
     }
+    //  bet  increse button
     increasebetbtn() {
       this.betIncrease = new Graphics();
       this.betIncrease.label = "_increasebetbtn_";
@@ -49829,10 +49817,7 @@ ${e2}`);
         this.betIncrease.width / 2,
         this.betIncrease.height / 2
       );
-      this.betIncrease.position.set(
-        this.table.width - 30,
-        this.table.height / 2
-      );
+      this.betIncrease.position.set(this.table.width - 30, this.table.height / 2);
       this.betIncrease.stroke({
         width: 3,
         color: "#D68B23"
@@ -49841,6 +49826,7 @@ ${e2}`);
       this.betIncreeText();
       this.table.addChild(this.betIncrease);
     }
+    //  increasebtn add click event
     clickEvetIncreaseBtn() {
       this.betIncrease.eventMode = "static";
       this.betIncrease.cursor = "pointer";
@@ -49850,11 +49836,11 @@ ${e2}`);
           ++this.betIdexNum;
           this.betshow.removeChildren();
           this.betText(`$${this.betnum[this.betIdexNum]}`);
-        } else {
         }
       };
       this.betIncrease.on("pointerdown", onIncreaseBet);
     }
+    // bet sicrease buttton
     discreasebetbtn() {
       this.betDiscrease = new Graphics();
       this.betDiscrease.label = "_increasethis.betDiscrease_";
@@ -49864,10 +49850,7 @@ ${e2}`);
         this.betDiscrease.width / 2,
         this.betDiscrease.height / 2
       );
-      this.betDiscrease.position.set(
-        30,
-        this.table.height / 2
-      );
+      this.betDiscrease.position.set(30, this.table.height / 2);
       this.betDiscrease.stroke({
         width: 3,
         color: "#D68B23"
@@ -49876,6 +49859,7 @@ ${e2}`);
       this.betDisncreeText();
       this.table.addChild(this.betDiscrease);
     }
+    // discrase add click event
     clickEvetDiscreaseBtn() {
       this.betDiscrease.eventMode = "static";
       this.betDiscrease.cursor = "pointer";
@@ -49885,11 +49869,11 @@ ${e2}`);
           --this.betIdexNum;
           this.betshow.removeChildren();
           this.betText(`$${this.betnum[this.betIdexNum]}`);
-        } else {
         }
       };
       this.betDiscrease.on("pointerdown", onDecreaseBet);
     }
+    //spin button text
     spinbtnText() {
       this.btnText = new Text({
         text: "SPIN",
@@ -49906,11 +49890,12 @@ ${e2}`);
       );
       this.spin.addChild(this.btnText);
     }
+    //betincrese add symbol
     betIncreeText() {
       const btnText = new Text({
         text: "+",
         style: {
-          fontSize: 35,
+          fontSize: 25,
           fill: 16777215,
           fontWeight: "bold"
         }
@@ -49922,43 +49907,48 @@ ${e2}`);
       );
       this.betIncrease.addChild(btnText);
     }
+    //  betDiscrease add taxt
     betDisncreeText() {
       const btnText = new Text({
         text: "-",
         style: {
-          fontSize: 35,
+          fontSize: 30,
           fill: 16777215,
           fontWeight: "bold"
         }
       });
       btnText.anchor.set(0.5);
       btnText.position.set(
-        this.betDiscrease.width / 2,
-        this.betDiscrease.height / 2
+        this.betDiscrease.width / 2 - 3,
+        this.betDiscrease.height / 2 - 4
       );
       this.betDiscrease.addChild(btnText);
     }
+    // add in betshow  bet number
     betText(text) {
       this.bet = new Text({
         text,
         style: {
-          fontSize: 35,
+          fontSize: 25,
           fill: 16777215
         }
       });
       this.bet.anchor.set(0.5);
-      this.bet.position.set(
-        this.betshow.width / 2,
-        this.betshow.height / 2
-      );
+      this.bet.position.set(this.betshow.width / 2, this.betshow.height / 2);
       this.betshow.addChild(this.bet);
     }
-    resize() {
-      this.table.x = innerWidth / 2;
-      this.table.y = innerHeight / 2;
+    // resixe button Panle
+    resizeBtnPanle() {
+      this.btnPanel.x = innerWidth / 2;
+      this.btnPanel.y = this.btnPanel_y;
     }
+    // modifer text
     modifertext(text) {
       this.btnText.text = text;
+    }
+    // get button Panel
+    getBtnPanel() {
+      return this.btnPanel;
     }
   };
 
@@ -49980,8 +49970,8 @@ ${e2}`);
     reel1.getmask(-350.5);
     reel1.x = -293;
     reel2 = new Reel(2);
-    reel2.getmask(-184.5);
-    reel2.x = -132;
+    reel2.getmask(-201);
+    reel2.x = -137.5;
     reel3 = new Reel(3);
     reel3.getmask(-41.5);
     reel3.x = 20;
@@ -49992,6 +49982,9 @@ ${e2}`);
     reel5.getmask(268.55);
     reel5.x = 327;
   }
+  var getButtonPanel = () => {
+    return btTable.getBtnPanel();
+  };
   var getSoundManager = () => {
     return Sound2;
   };
@@ -50005,6 +49998,9 @@ ${e2}`);
     reel3.playReelSpin();
     reel4.playReelSpin();
     reel5.playReelSpin();
+  };
+  var getReel1 = () => {
+    return reel1.getReelState();
   };
   var getReel5 = () => {
     return reel5.getReelState();

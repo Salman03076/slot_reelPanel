@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite, Ticker, BlurFilter } from "pixi.js";
 import { assetMap } from "../ulity.js";
-import { changeBtnText, getBg, getSoundManager, getSpinBtn } from "../game.js";
+import { changeBtnText, getBg, getSoundManager } from "../game.js";
 
 // creat the reelPanel\
 export class Reel extends Container {
@@ -81,7 +81,7 @@ export class Reel extends Container {
     for (let num = 0; num < this.Symbols.length; num++) {
       let symbols = this.Symbols[num];
       symbols.y += this.spinSpeed;
-      console.log(symbols.y);
+      // console.log(symbols.y);
       if (symbols.y > totalSymbolsHeight) {
         symbols.y = symbols.y - totalSymbolsHeight - 200;
       }
@@ -94,7 +94,6 @@ export class Reel extends Container {
   public playReelSpin() {
     if (this.isSpining) return;
     this.isSpining = true;
-    this.bounceanimation();
     setTimeout(() => {
       changeBtnText("STOP");
       Ticker.shared.add(this.spinboundle);
@@ -105,7 +104,7 @@ export class Reel extends Container {
       this.blurSymbols(0);
       if (this.reelId == 5) {
         getSoundManager().spinSound.stop();
-        changeBtnText("SPIN")
+        changeBtnText("SPIN");
       }
     }, 700 * this.reelId);
   }
@@ -133,7 +132,7 @@ export class Reel extends Container {
     const mask = new Graphics();
     mask.label = "symbolsMask";
 
-    mask.rect(Positionx, -219, 120, 515);
+    mask.rect(Positionx, -219, 125, 515);
 
     mask.fill(0xffffff);
 
@@ -158,23 +157,16 @@ export class Reel extends Container {
     for (let index = 0; index < this.Symbols.length; index++) {
       const currentY = this.Symbols[index].y;
 
-      if (currentY == 0 || currentY == 150 || currentY == 300) {
+      if (currentY == 0 || currentY == 200 || currentY == 400) {
         clearInterval(this.stopReelAnimation);
 
         Ticker.shared.remove(this.spinboundle);
         this.spinSpeed = 30;
-        console.log("Reel stopped at:", currentY);
+        // console.log("Reel stopped at:", currentY);
         break;
       } else {
         this.spinSpeed = 30;
       }
-    }
-  }
-
-  private bounceanimation() {
-    for (let num = 0; num < this.Symbols.length; num++) {
-      let symbols = this.Symbols[num];
-      symbols.y -= 30;
     }
   }
 
@@ -185,5 +177,4 @@ export class Reel extends Container {
   public getBlurSymbols(BlurNum: number) {
     return this.blurSymbols(BlurNum);
   }
-
 }

@@ -7,7 +7,7 @@ export let countLoadAsset: number = 0;
 export const assetsMap = [];
 
 export const reelbackground = async (): Promise<Texture> => {
-  console.log("reelPanelload");
+  // console.log("reelPanelload");
   return await loadTexture(
     `reelPanelbg`,
     `assets/reelContainerimage/background.png`,
@@ -28,22 +28,21 @@ const loadTexture = async (textureName: string, textureURL: string) => {
   return assetsMap[`${textureName}`];
 };
 
-
 export const soundPlayLogo = async (): Promise<Texture> => {
-  const soundUrl: string = "assets/sound_logo/volume.png"
-  const soundtexture = await Assets.load(soundUrl)
+  const soundUrl: string = "assets/sound_logo/soundBtn_logo_play.png";
+  const soundtexture = await Assets.load(soundUrl);
+  countLoadAsset++;
+  calculatepercetage();
   return soundtexture;
-
 };
-
-
 
 export const soundMuteLogo = async (): Promise<Texture> => {
-  const soundUrl: string = "assets/sound_logo/enable-sound (1).png"
-  const soundtexture = await Assets.load(soundUrl)
+  const soundUrl: string = "assets/sound_logo/soundBtn_logo_mute.png";
+  const soundtexture = await Assets.load(soundUrl);
+  countLoadAsset++;
+  calculatepercetage();
   return soundtexture;
 };
-
 
 export const assetMap: Texture[] = [];
 
@@ -69,5 +68,5 @@ export async function loadAssets(): Promise<void> {
     calculatepercetage();
   }
 
-  console.log(countLoadAsset);
+  // console.log(countLoadAsset);
 }

@@ -16,56 +16,67 @@ let reel5: Reel;
 
 // all file initialization
 export async function gameInit(): Promise<void> {
-    Sound = new SoundManager();
+  Sound = new SoundManager();
 
-    bg = new background();
+  bg = new background();
 
-    btTable = new betTable()
+  btTable = new betTable();
 
-    await loadAssets();
+  await loadAssets();
 
-    reel1 = new Reel(1);
-    reel1.getmask(-350.5);
-    reel1.x = -293;
-    reel2 = new Reel(2);
-    reel2.getmask(-184.5);
-    reel2.x = -132;
-    reel3 = new Reel(3);
-    reel3.getmask(-41.5);
-    reel3.x = 20;
-    reel4 = new Reel(4);
-    reel4.getmask(116.5);
-    reel4.x = 176;
-    reel5 = new Reel(5);
-    reel5.getmask(268.55);
-    reel5.x = 327;
+  reel1 = new Reel(1);
+
+  reel1.getmask(-350.5);
+  reel1.x = -293;
+  reel2 = new Reel(2);
+  reel2.getmask(-201);
+  reel2.x = -137.5;
+  reel3 = new Reel(3);
+  reel3.getmask(-41.5);
+  reel3.x = 20;
+  reel4 = new Reel(4);
+  reel4.getmask(116.5);
+  reel4.x = 176;
+  reel5 = new Reel(5);
+  reel5.getmask(268.55);
+  reel5.x = 327;
 }
 
+export const getButtonPanel = () => {
+  return btTable.getBtnPanel();
+};
 export const getSoundManager = () => {
-    return Sound;
+  return Sound;
 };
 
 export const getBg = () => {
-    return bg;
+  return bg;
 };
 
 export const getSpinBtn = () => {
-    return spinBtn;
+  return spinBtn;
 };
 
 export const getPlayspin = (): void => {
-    Sound.spinSound.play();
-    reel1.playReelSpin();
-    reel2.playReelSpin();
-    reel3.playReelSpin();
-    reel4.playReelSpin();
-    reel5.playReelSpin();
+  Sound.spinSound.play();
+  reel1.playReelSpin();
+  reel2.playReelSpin();
+  reel3.playReelSpin();
+  reel4.playReelSpin();
+  reel5.playReelSpin();
+};
+export const getReel1 = () => {
+  return reel1.getReelState();
 };
 
 export const getReel5 = () => {
-    return reel5.getReelState();
-}
+  return reel5.getReelState();
+};
+
+
+
 
 export const changeBtnText = (text: string): void => {
-    btTable.modifertext(text);
+  btTable.modifertext(text);
 };
+

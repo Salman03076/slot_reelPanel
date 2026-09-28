@@ -41,7 +41,7 @@ body {
   width: 85%;
   background-color: white;
   border: 2px solid #c7702d;
-  border-radius: 20%;
+  border-radius: 15%;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -80,6 +80,6 @@ body {
 
 #continoueBtn:hover {
   cursor: pointer;
-  background-color: #432228;
+  background-color: #552c34;
 
 }

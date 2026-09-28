@@ -1,7 +1,7 @@
 import { Howl, Howler } from "howler";
-import { Graphics, Sprite } from "pixi.js";
+import { Sprite } from "pixi.js";
 import { soundMuteLogo, soundPlayLogo } from "./ulity.js";
-import { getStage } from "./index.js";
+import { getButtonPanel } from "./game.js";
 
 // Game Sound initialization
 export class SoundManager {
@@ -9,9 +9,7 @@ export class SoundManager {
   private isMuted = false;
   private playSprite!: Sprite;
   private muteSprite!: Sprite;
-  private soundBtn_x: number = 350;
-  private soundBtn_y: number = 420;
-
+  private soundBtn_x: number = -200;
 
   private audioPaths = {
     background: "assets/audio/background.mp3",
@@ -21,7 +19,6 @@ export class SoundManager {
     win: "assets/audio/win.mp3",
     bigWin: "assets/audio/bigWin.mp3",
   };
-
 
   constructor() {
     Howler.autoUnlock = true;
@@ -61,8 +58,7 @@ export class SoundManager {
   private async createSoundBtn(): Promise<void> {
     this.soundbtn = new Sprite();
     this.soundbtn.label = `_soundBtn_`;
-    this.soundbtn.x = (globalThis.screen.width / 2) - this.soundBtn_x;
-    this.soundbtn.y = (globalThis.screen.height / 2) + this.soundBtn_y;
+    this.soundbtn.x = this.soundBtn_x;
 
     const texture1 = await soundPlayLogo();
     this.playSprite = new Sprite(texture1);
@@ -73,28 +69,26 @@ export class SoundManager {
     const texture2 = await soundMuteLogo();
     this.muteSprite = new Sprite(texture2);
     this.muteSprite.anchor.set(0.5);
-
     this.muteSprite.width = 80;
     this.muteSprite.height = 80;
 
     this.soundbtn.addChild(this.playSprite);
-    getStage().addChild(this.soundbtn);
-    this.checkstatuSound()
-
+    getButtonPanel().addChild(this.soundbtn);
+    this.checkstatuSound();
   }
-
 
   private checkstatuSound() {
     this.soundbtn.eventMode = "static";
     this.soundbtn.cursor = "pointer";
     this.soundbtn.on("pointerdown", () => {
       this.clickSound.play();
+
       this.isMuted = !this.isMuted;
       Howler.mute(this.isMuted);
 
       this.soundbtn.removeChildren();
-      this.soundbtn.addChild(this.isMuted ? this.muteSprite : this.playSprite);
+      const activeIcon = this.isMuted ? this.muteSprite : this.playSprite;
+      this.soundbtn.addChild(activeIcon);
     });
-
   }
 }
