@@ -18,7 +18,7 @@ export class betTable {
   private bet: Text;
 
   constructor() {
-    this.btnPanel.label = `_Containver"buttonPanle"`;
+    this.btnPanel.label = `buttonPanel`;
     addEventListener(`resize`, this.resizeBtnPanle.bind(this));
     this.betTable();
     this.discreasebetbtn();

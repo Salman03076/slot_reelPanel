@@ -49451,10 +49451,11 @@ ${e2}`);
   // src/ts/view/Reel.ts
   var Reel = class extends Container {
     isSpining = false;
-    spinSpeed = 20;
+    spinSpeed = 30;
     Symbols = [];
     reelId;
     stopReelAnimation;
+    bounceSpeed = 20;
     constructor(reelId) {
       super();
       this.reelId = reelId;
@@ -49527,20 +49528,21 @@ ${e2}`);
       if (this.isSpining) return;
       this.isSpining = true;
       setTimeout(() => {
-        changeBtnText("STOP");
         this.BounceupReel();
-        Ticker.shared.add(this.spinboundle);
-        this.blurSymbols(1);
+        changeBtnText("STOP");
+        setTimeout(() => {
+          Ticker.shared.add(this.spinboundle);
+          this.blurSymbols(1);
+        }, 50);
       }, 50 * this.reelId);
       setTimeout(() => {
         this.stopReelSpin();
-        this.BouncedownReel();
         this.blurSymbols(0);
         if (this.reelId == 5) {
           getSoundManager().spinSound.stop();
           changeBtnText("SPIN");
         }
-      }, 700 * this.reelId);
+      }, 500 * this.reelId);
     }
     // stop spin
     stopReelSpin() {
@@ -49577,24 +49579,56 @@ ${e2}`);
       }
     }
     BounceupReel() {
-      const curretY = 90;
-      this.y -= curretY;
+      const startY = this.y;
+      const targetY = startY - 100;
+      let movingToTarget = true;
+      const bounceStart = () => {
+        if (movingToTarget) {
+          this.y -= this.bounceSpeed;
+          if (this.y <= targetY) {
+            movingToTarget = false;
+          }
+          return;
+        }
+        this.y += this.bounceSpeed;
+        if (this.y >= startY) {
+          this.y = startY;
+          Ticker.shared.remove(bounceStart);
+        }
+      };
+      Ticker.shared.add(bounceStart);
     }
     BouncedownReel() {
-      const curretY = 100;
-      this.y += curretY;
+      const startY = this.y;
+      const targetY = startY + 80;
+      let movingToTarget = true;
+      const bounceEnd = () => {
+        if (movingToTarget) {
+          this.y += this.bounceSpeed;
+          if (this.y >= targetY) {
+            movingToTarget = false;
+          }
+          return;
+        }
+        this.y -= this.bounceSpeed;
+        if (this.y <= startY) {
+          this.y = startY;
+          Ticker.shared.remove(bounceEnd);
+        }
+      };
+      Ticker.shared.add(bounceEnd);
     }
     checkPosition() {
       for (let index = 0; index < this.Symbols.length; index++) {
         const currentY = this.Symbols[index].y;
-        this.y = -160.5;
         if (currentY == 0 || currentY == 200 || currentY == 400) {
           clearInterval(this.stopReelAnimation);
           Ticker.shared.remove(this.spinboundle);
-          this.spinSpeed = 20;
+          this.BouncedownReel();
+          this.spinSpeed = 30;
           break;
         } else {
-          this.spinSpeed = 20;
+          this.spinSpeed = 30;
         }
       }
     }
@@ -49681,8 +49715,20 @@ ${e2}`);
       bigWin: "assets/audio/bigWin.mp3"
     };
     constructor() {
-      import_howler.Howler.autoUnlock = true;
+      import_howler.Howler.autoUnlock = false;
       this.createSoundBtn();
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (document.hidden) {
+            this.backgroundSound.pause();
+            this.spinSound.pause();
+          }
+          if (document.visibilityState === "visible") {
+            this.backgroundSound.play();
+          }
+        }
+      );
     }
     backgroundSound = new import_howler.Howl({
       src: [this.audioPaths.background],
@@ -49755,7 +49801,7 @@ ${e2}`);
     betshow;
     bet;
     constructor() {
-      this.btnPanel.label = `_Containver"buttonPanle"`;
+      this.btnPanel.label = `buttonPanel`;
       addEventListener(`resize`, this.resizeBtnPanle.bind(this));
       this.betTable();
       this.discreasebetbtn();

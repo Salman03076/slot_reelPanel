@@ -5,10 +5,11 @@ import { changeBtnText, getBg, getSoundManager } from "../game.js";
 // creat the reelPanel\
 export class Reel extends Container {
   private isSpining: boolean = false;
-  private spinSpeed: number = 20;
+  private spinSpeed: number = 30;
   private Symbols: Sprite[] = [];
   private reelId: number;
   private stopReelAnimation;
+  private bounceSpeed: number = 20;
 
   constructor(reelId: number) {
     super();
@@ -81,7 +82,6 @@ export class Reel extends Container {
     for (let num = 0; num < this.Symbols.length; num++) {
       let symbols = this.Symbols[num];
       symbols.y += this.spinSpeed;
-      // console.log(symbols.y);
       if (symbols.y > totalSymbolsHeight) {
         symbols.y = symbols.y - totalSymbolsHeight - 200;
       }
@@ -95,21 +95,21 @@ export class Reel extends Container {
     if (this.isSpining) return;
     this.isSpining = true;
     setTimeout(() => {
+      this.BounceupReel();
       changeBtnText("STOP");
-      this.BounceupReel()
-      Ticker.shared.add(this.spinboundle);
-      this.blurSymbols(1);
+      setTimeout(() => {
+        Ticker.shared.add(this.spinboundle);
+        this.blurSymbols(1);
+      }, 50);
     }, 50 * this.reelId);
     setTimeout(() => {
       this.stopReelSpin();
-      // this.BouncedownReel()
-      this.BouncedownReel()
       this.blurSymbols(0);
       if (this.reelId == 5) {
         getSoundManager().spinSound.stop();
         changeBtnText("SPIN");
       }
-    }, 700 * this.reelId);
+    }, 500 * this.reelId);
   }
 
   // stop spin
@@ -156,33 +156,67 @@ export class Reel extends Container {
   }
 
   private BounceupReel() {
-    const curretY = 90;
-    this.y -= curretY;
-  }
+    const startY = this.y;
+    const targetY = startY - 100;
+    let movingToTarget = true;
 
+    const bounceStart = () => {
+      if (movingToTarget) {
+        this.y -= this.bounceSpeed;
+        if (this.y <= targetY) {
+          movingToTarget = false;
+        }
+        return;
+      }
+
+      this.y += this.bounceSpeed;
+      if (this.y >= startY) {
+        this.y = startY;
+        Ticker.shared.remove(bounceStart);
+      }
+    };
+
+    Ticker.shared.add(bounceStart);
+  }
 
   private BouncedownReel() {
-    const curretY = 150;
-    this.y += curretY;
-  }
+    const startY = this.y;
+    const targetY = startY + 80;
+    let movingToTarget = true;
 
+    const bounceEnd = () => {
+      if (movingToTarget) {
+        this.y += this.bounceSpeed;
+        if (this.y >= targetY) {
+          movingToTarget = false;
+        }
+        return;
+      }
+
+      this.y -= this.bounceSpeed;
+      if (this.y <= startY) {
+        this.y = startY;
+        Ticker.shared.remove(bounceEnd);
+      }
+    };
+
+    Ticker.shared.add(bounceEnd);
+  }
 
   private checkPosition() {
     // Check all symbols
     for (let index = 0; index < this.Symbols.length; index++) {
       const currentY = this.Symbols[index].y;
-      this.y = -160.5;
 
       if (currentY == 0 || currentY == 200 || currentY == 400) {
         clearInterval(this.stopReelAnimation);
 
         Ticker.shared.remove(this.spinboundle);
-        this.spinSpeed = 20;
-        // console.log("Reel stopped at:", currentY);
-        // this.y = -160.5;
+        this.BouncedownReel();
+        this.spinSpeed = 30;
         break;
       } else {
-        this.spinSpeed = 20;
+        this.spinSpeed = 30;
       }
     }
   }
